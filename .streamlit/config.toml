@@ -1,0 +1,10 @@
+[theme]
+# 活泼明快的趣味配色
+primaryColor = "#FF5A5F"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#FFF4E6"
+textColor = "#262730"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false
