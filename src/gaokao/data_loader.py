@@ -7,13 +7,37 @@
 from __future__ import annotations
 
 import csv
+import os
 from functools import lru_cache
 from pathlib import Path
 
 from .models import AdmissionRecord, Major, School
 
-# 默认数据目录：仓库根下的 data/
+# 默认数据目录：仓库根下的 data/（模拟数据）
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+# 真实数据目录：若存在完整三表则优先使用（被 .gitignore 忽略）
+REAL_DIR = DATA_DIR / "real"
+_DATASET_FILES = ("schools.csv", "majors.csv", "admission_scores.csv")
+
+
+def _has_dataset(path: Path) -> bool:
+    return all((path / f).exists() for f in _DATASET_FILES)
+
+
+def resolve_data_dir() -> Path:
+    """决定实际数据来源：环境变量 GAOKAO_DATA_DIR > data/real > data/（模拟）。"""
+    env = os.environ.get("GAOKAO_DATA_DIR")
+    if env and _has_dataset(Path(env)):
+        return Path(env)
+    if _has_dataset(REAL_DIR):
+        return REAL_DIR
+    return DATA_DIR
+
+
+def active_source() -> tuple[Path, bool]:
+    """返回 (实际数据目录, 是否为真实数据)。真实=非默认模拟目录。"""
+    path = resolve_data_dir()
+    return path, path.resolve() != DATA_DIR.resolve()
 
 
 def _cache(func):
@@ -33,7 +57,7 @@ def _read_rows(path: Path) -> list[dict]:
 
 @_cache
 def load_schools(data_dir: str | None = None) -> dict[str, School]:
-    base = Path(data_dir) if data_dir else DATA_DIR
+    base = Path(data_dir) if data_dir else resolve_data_dir()
     schools: dict[str, School] = {}
     for r in _read_rows(base / "schools.csv"):
         schools[r["id"]] = School(
@@ -46,7 +70,7 @@ def load_schools(data_dir: str | None = None) -> dict[str, School]:
 
 @_cache
 def load_majors(data_dir: str | None = None) -> dict[str, Major]:
-    base = Path(data_dir) if data_dir else DATA_DIR
+    base = Path(data_dir) if data_dir else resolve_data_dir()
     majors: dict[str, Major] = {}
     for r in _read_rows(base / "majors.csv"):
         majors[r["id"]] = Major(
@@ -64,7 +88,7 @@ def load_majors(data_dir: str | None = None) -> dict[str, Major]:
 
 @_cache
 def load_admissions(data_dir: str | None = None) -> list[AdmissionRecord]:
-    base = Path(data_dir) if data_dir else DATA_DIR
+    base = Path(data_dir) if data_dir else resolve_data_dir()
     records: list[AdmissionRecord] = []
     for r in _read_rows(base / "admission_scores.csv"):
         records.append(AdmissionRecord(
@@ -77,7 +101,7 @@ def load_admissions(data_dir: str | None = None) -> list[AdmissionRecord]:
 
 
 def data_available(data_dir: str | None = None) -> bool:
-    base = Path(data_dir) if data_dir else DATA_DIR
+    base = Path(data_dir) if data_dir else resolve_data_dir()
     return all((base / f).exists() for f in
                ("schools.csv", "majors.csv", "admission_scores.csv"))
 
