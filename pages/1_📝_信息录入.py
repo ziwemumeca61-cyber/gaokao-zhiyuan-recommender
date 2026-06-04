@@ -62,6 +62,9 @@ with st.form("student_form"):
 
     submitted = st.form_submit_button("💾 保存并生成画像", type="primary")
 
+st.page_link("pages/10_🔢_一分一段.py",
+             label="🔢 不确定分数对应的位次？用一分一段表换算", icon="🔢")
+
 if submitted:
     student = Student(
         score=float(score), rank=int(rank), province=province,
