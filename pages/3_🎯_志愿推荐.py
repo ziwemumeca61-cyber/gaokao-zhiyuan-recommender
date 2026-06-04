@@ -39,21 +39,28 @@ if total == 0:
 # ---------- 一键导出 ----------
 st.markdown("#### 📄 一键导出推荐理由文档")
 md = report.build_markdown_report(student, buckets)
-cols = st.columns(3)
+cols = st.columns(4)
 with cols[0]:
-    st.download_button("⬇️ 下载 Markdown", md, file_name="志愿推荐报告.md",
+    st.download_button("⬇️ Markdown", md, file_name="志愿推荐报告.md",
                        mime="text/markdown", use_container_width=True)
 with cols[1]:
     if report.docx_available():
         st.download_button(
-            "⬇️ 下载 Word", report.build_docx_report(student, buckets),
+            "⬇️ Word", report.build_docx_report(student, buckets),
             file_name="志愿推荐报告.docx", use_container_width=True,
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
     else:
-        st.button("Word 导出（需安装 python-docx）", disabled=True,
-                  use_container_width=True)
+        st.button("Word（需 python-docx）", disabled=True, use_container_width=True)
 with cols[2]:
-    with st.popover("👀 预览文档", use_container_width=True):
+    if report.pdf_available():
+        st.download_button(
+            "⬇️ PDF", report.build_pdf_report(student, buckets),
+            file_name="志愿推荐报告.pdf", mime="application/pdf",
+            use_container_width=True)
+    else:
+        st.button("PDF（需 reportlab）", disabled=True, use_container_width=True)
+with cols[3]:
+    with st.popover("👀 预览", use_container_width=True):
         st.markdown(md)
 
 st.divider()

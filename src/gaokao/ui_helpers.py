@@ -62,6 +62,35 @@ def toggle_wishlist(major_id: str) -> None:
         wl.append(major_id)
 
 
+def remove_from_wishlist(major_id: str) -> None:
+    wl = get_wishlist()
+    if major_id in wl:
+        wl.remove(major_id)
+
+
+def move_wishlist_item(major_id: str, delta: int) -> None:
+    """在心愿单内把某专业上移(delta<0)或下移(delta>0)；越界自动夹紧。"""
+    wl = get_wishlist()
+    if major_id not in wl:
+        return
+    i = wl.index(major_id)
+    j = max(0, min(len(wl) - 1, i + delta))
+    if i != j:
+        wl.insert(j, wl.pop(i))
+
+
+def wishlist_items() -> list[tuple[object, Major]]:
+    """按心愿单顺序返回 (School|None, Major) 列表，跳过已失效的专业 id。"""
+    majors = load_majors()
+    schools = load_schools()
+    items: list[tuple[object, Major]] = []
+    for mid in get_wishlist():
+        m = majors.get(mid)
+        if m is not None:
+            items.append((schools.get(m.school_id), m))
+    return items
+
+
 # ---------- 渲染组件 ----------
 def render_major_detail(major: Major) -> None:
     """专业科普详情：是什么 / 学什么 / 干什么 / 适合谁。"""
