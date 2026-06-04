@@ -201,3 +201,20 @@ def build_table(
 ) -> ScoreRankTable | None:
     """构建某省某科类的一分一段表；数据不足时返回 None。"""
     return _build_cached(province, subject_type, data_dir)
+
+
+def segment_pairs() -> list[tuple[str, str]]:
+    """已内置真实一分一段种子的 (省份, 科类) 列表。"""
+    if not SEGMENTS_DIR.exists():
+        return []
+    pairs: set[tuple[str, str]] = set()
+    for f in SEGMENTS_DIR.glob("*_*_*.csv"):
+        parts = f.stem.split("_")
+        if len(parts) >= 3:
+            pairs.add((parts[0], parts[1]))
+    return sorted(pairs)
+
+
+def segment_provinces() -> list[str]:
+    """有真实一分一段种子的省份（去重排序）。"""
+    return sorted({p for p, _ in segment_pairs()})

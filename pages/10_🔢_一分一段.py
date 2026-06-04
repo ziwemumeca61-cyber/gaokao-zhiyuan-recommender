@@ -23,7 +23,8 @@ if not ensure_data():
     st.stop()
 
 student = get_student()
-provinces = available_provinces()
+# 省份候选 = 录取数据里的省份 ∪ 有真实一分一段种子的省份
+provinces = sorted(set(available_provinces()) | set(rank_score.segment_provinces()))
 
 # ---------- 省份/科类（默认取考生已填） ----------
 c1, c2 = st.columns(2)

@@ -70,7 +70,26 @@ def test_real_segment_matches_official_anchors():
         assert t.rank_for_score(score).value == rank
 
 
-def test_subject_without_real_segment_falls_back_to_mock():
-    t = rank_score.build_table("四川", "历史")
-    assert t is not None
-    assert t.source.is_real is False
+def test_all_seed_provinces_load_as_real_and_monotonic():
+    """每个内置种子都应被识别为真实数据，且位次随分数单调非增。"""
+    pairs = rank_score.segment_pairs()
+    assert len(pairs) >= 10
+    for province, subject in pairs:
+        t = rank_score.build_table(province, subject)
+        assert t is not None and t.source.is_real, f"{province}{subject} 未用真实种子"
+        assert t.ranks == sorted(t.ranks, reverse=True), f"{province}{subject} 非单调"
+
+
+def test_segment_provinces_include_non_mock_province():
+    """河北不在模拟录取数据里，但有真实种子，应可被换算器识别。"""
+    assert "河北" in rank_score.segment_provinces()
+
+
+def test_seed_anchors_match_official_values():
+    cases = [
+        ("河北", "物理", 600, 27073), ("江苏", "历史", 600, 5796),
+        ("广东", "物理", 600, 26988), ("四川", "历史", 600, 4584),
+    ]
+    for province, subject, score, rank in cases:
+        t = rank_score.build_table(province, subject)
+        assert t.rank_for_score(score).value == rank, f"{province}{subject}{score}"
