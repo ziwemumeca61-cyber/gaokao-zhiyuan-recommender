@@ -13,8 +13,8 @@ from gaokao import report  # noqa: E402
 from gaokao.models import TIERS  # noqa: E402
 from gaokao.recommender import engine  # noqa: E402
 from gaokao.ui_helpers import (  # noqa: E402
-    ensure_data, render_major_detail, require_student, school_caption,
-    wishlist_button,
+    ensure_data, render_major_detail, render_scope_banner, require_student,
+    scope_label, school_caption, wishlist_button,
 )
 
 st.set_page_config(page_title="志愿推荐", page_icon="🎯", layout="wide")
@@ -26,6 +26,8 @@ if not ensure_data():
 student = require_student()
 if student is None:
     st.stop()
+
+render_scope_banner(student)
 
 per_tier = st.slider("每档推荐数量", 3, 15, 8)
 buckets = engine.recommend(student, per_tier=per_tier)
@@ -82,8 +84,9 @@ for col, tier in zip(columns, TIERS):
                     rec.probability,
                     text=f"录取概率 {rec.probability * 100:.0f}%"
                          f"（{rec.prob_low * 100:.0f}–{rec.prob_high * 100:.0f}%）")
-                st.caption(f"把握度 {rec.confidence}｜参考位次 {rec.ref_rank}"
-                           f"｜参考分 {rec.ref_score}｜综合分 {rec.composite_score:.2f}")
+                st.caption(f"📍{scope_label(student)}｜把握度 {rec.confidence}"
+                           f"｜参考位次 {rec.ref_rank}｜参考分 {rec.ref_score}"
+                           f"｜综合分 {rec.composite_score:.2f}")
                 for reason in rec.reasons:
                     st.markdown(f"- {reason}")
                 with st.expander("📚 这个专业是干嘛的？"):

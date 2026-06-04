@@ -45,6 +45,19 @@ def require_student() -> Student | None:
     return student
 
 
+# ---------- 省份口径（高考按省录取，跨省分数线不可比） ----------
+def scope_label(student: Student) -> str:
+    """考生的生源省份+科类口径，用于在各处标注分数线/位次的适用范围。"""
+    return f"{student.province}·{student.subject_type}"
+
+
+def render_scope_banner(student: Student) -> None:
+    """在展示分数线/位次的页面顶部标注省份口径，提醒跨省不可直接比较。"""
+    st.info(
+        f"📍 以下分数线/位次均按 **{student.province} · {student.subject_type}** 口径测算。"
+        "高考按省份分别划线录取，不同省份的分数/位次不可直接比较。")
+
+
 # ---------- 心愿单 ----------
 def get_wishlist() -> list[str]:
     return st.session_state.setdefault("wishlist", [])

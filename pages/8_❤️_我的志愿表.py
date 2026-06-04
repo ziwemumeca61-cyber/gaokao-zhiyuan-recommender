@@ -12,7 +12,8 @@ import streamlit as st  # noqa: E402
 from gaokao import report  # noqa: E402
 from gaokao.ui_helpers import (  # noqa: E402
     ensure_data, get_wishlist, move_wishlist_item, remove_from_wishlist,
-    render_major_detail, require_student, school_caption, wishlist_items,
+    render_major_detail, render_scope_banner, require_student, school_caption,
+    wishlist_items,
 )
 
 st.set_page_config(page_title="我的志愿表", page_icon="❤️", layout="wide")
@@ -25,6 +26,8 @@ if not ensure_data():
 student = require_student()
 if student is None:
     st.stop()
+
+render_scope_banner(student)
 
 items = wishlist_items()
 

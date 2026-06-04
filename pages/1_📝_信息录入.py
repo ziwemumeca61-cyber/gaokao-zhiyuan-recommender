@@ -33,9 +33,11 @@ with st.form("student_form"):
         score = st.number_input("高考分数 *", min_value=200, max_value=750,
                                 value=int(existing.score) if existing else 600)
         province = st.selectbox(
-            "考试省份 *", provinces,
+            "生源所在省份 *", provinces,
             index=provinces.index(existing.province) if existing
-            and existing.province in provinces else 0)
+            and existing.province in provinces else 0,
+            help="即你高考报名的省份。高考按省份分别划线录取，"
+                 "所有分数线/位次都基于此省，跨省不可直接比较。")
     with c2:
         rank = st.number_input("全省位次 *", min_value=1, max_value=500000,
                                value=int(existing.rank) if existing else 15000,

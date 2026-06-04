@@ -15,6 +15,12 @@ from .models import TIERS, Major, RIASEC_LABELS, Recommendation, School, Student
 _DISCLAIMER = "仅供参考，请结合各校招生章程谨慎决策"
 
 
+def _scope_note(student: Student) -> str:
+    """省份口径说明：报告内所有分数线/位次均为该省该科类，跨省不可比。"""
+    return (f"数据口径：{student.province}·{student.subject_type}"
+            "（高考按省份分别划线录取，跨省分数/位次不可直接比较）")
+
+
 # ---------------------------------------------------------------------------
 # 考生画像（多种格式共用的文本片段）
 # ---------------------------------------------------------------------------
@@ -46,6 +52,8 @@ def build_markdown_report(
     lines.append("# 高考志愿推荐报告")
     lines.append("")
     lines.append(f"> 生成日期：{date.today().isoformat()}　|　{_DISCLAIMER}")
+    lines.append(">")
+    lines.append(f"> 📍 {_scope_note(student)}")
     lines.append("")
 
     # 考生信息
@@ -102,6 +110,8 @@ def build_markdown_wishlist(
     lines.append("# 我的志愿表")
     lines.append("")
     lines.append(f"> 生成日期：{date.today().isoformat()}　|　{_DISCLAIMER}")
+    lines.append(">")
+    lines.append(f"> 📍 {_scope_note(student)}")
     lines.append("")
     lines.append("## 考生画像")
     lines.append("")
@@ -148,6 +158,7 @@ def build_docx_report(student: Student, buckets: dict[str, list[Recommendation]]
     doc = Document()
     doc.add_heading("高考志愿推荐报告", level=0)
     doc.add_paragraph(f"生成日期：{date.today().isoformat()}（{_DISCLAIMER}）")
+    doc.add_paragraph(f"📍 {_scope_note(student)}")
 
     doc.add_heading("考生画像", level=1)
     for ln in _profile_lines(student):
@@ -179,6 +190,7 @@ def build_docx_wishlist(
     doc = Document()
     doc.add_heading("我的志愿表", level=0)
     doc.add_paragraph(f"生成日期：{date.today().isoformat()}（{_DISCLAIMER}）")
+    doc.add_paragraph(f"📍 {_scope_note(student)}")
 
     doc.add_heading("考生画像", level=1)
     for ln in _profile_lines(student):
@@ -223,6 +235,7 @@ def build_pdf_report(student: Student, buckets: dict[str, list[Recommendation]])
     blocks: list[tuple[str, str]] = [
         ("高考志愿推荐报告", "title"),
         (f"生成日期：{date.today().isoformat()}（{_DISCLAIMER}）", "caption"),
+        (_scope_note(student), "caption"),
         ("一、考生画像", "h1"),
     ]
     blocks += [(ln, "body") for ln in _profile_lines(student)]
@@ -257,6 +270,7 @@ def build_pdf_wishlist(
     blocks: list[tuple[str, str]] = [
         ("我的志愿表", "title"),
         (f"生成日期：{date.today().isoformat()}（{_DISCLAIMER}）", "caption"),
+        (_scope_note(student), "caption"),
         ("考生画像", "h1"),
     ]
     blocks += [(ln, "body") for ln in _profile_lines(student)]

@@ -36,6 +36,16 @@ def test_markdown_wishlist_lists_items_in_order():
     assert "1. 测试大学" in md
 
 
+def test_reports_label_province_scope():
+    """报告须标注省份口径，避免被当成跨省可比。"""
+    buckets = engine.recommend(_student(), per_tier=3)
+    rep = report.build_markdown_report(_student(), buckets)
+    wl = report.build_markdown_wishlist(_student(), _wishlist_items())
+    for md in (rep, wl):
+        assert "四川·物理" in md
+        assert "跨省" in md
+
+
 def test_markdown_wishlist_handles_empty():
     md = report.build_markdown_wishlist(_student(), [])
     assert "共 0 个" in md

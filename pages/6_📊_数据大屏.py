@@ -13,7 +13,9 @@ import streamlit as st  # noqa: E402
 from gaokao.data_loader import load_admissions, load_majors  # noqa: E402
 from gaokao.models import TIERS  # noqa: E402
 from gaokao.recommender import engine, trending  # noqa: E402
-from gaokao.ui_helpers import ensure_data, require_student, riasec_radar  # noqa: E402
+from gaokao.ui_helpers import (  # noqa: E402
+    ensure_data, render_scope_banner, require_student, riasec_radar, scope_label,
+)
 
 st.set_page_config(page_title="数据大屏", page_icon="📊", layout="wide")
 st.title("📊 数据大屏")
@@ -24,6 +26,8 @@ if not ensure_data():
 student = require_student()
 if student is None:
     st.stop()
+
+render_scope_banner(student)
 
 buckets = engine.recommend(student, per_tier=12)
 flat = [r for t in TIERS for r in buckets[t]]
@@ -41,7 +45,7 @@ with r1c1:
                  color_discrete_map={"冲": "#FF5A5F", "稳": "#FFB400", "保": "#00A699"})
     st.plotly_chart(fig, use_container_width=True)
 with r1c2:
-    st.markdown("#### 录取概率分布")
+    st.markdown(f"#### 录取概率分布（{scope_label(student)}）")
     probs = [r.probability * 100 for r in flat]
     fig = px.histogram(x=probs, nbins=10, labels={"x": "录取概率(%)", "y": "志愿数"})
     fig.update_traces(marker_color="#FF5A5F")
@@ -65,7 +69,7 @@ with r2c2:
     st.plotly_chart(fig, use_container_width=True)
 
 # 第三行：位次走势
-st.markdown("#### 院校专业录取位次走势")
+st.markdown(f"#### 院校专业录取位次走势（{scope_label(student)}）")
 options = {f"{r.school.name} · {r.major.name}": (r.school.id, r.major.id)
            for r in flat}
 choice = st.selectbox("选择一个推荐查看历年位次", list(options.keys()))
