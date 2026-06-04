@@ -54,3 +54,23 @@ def test_score_for_rank_out_of_range_clamped():
     t = _table()
     assert t.score_for_rank(t.rank_best // 2).clamped is True
     assert t.score_for_rank(t.rank_worst * 2).clamped is True
+
+
+# ---------- 真实一分一段种子（四川 2025 物理类） ----------
+def test_real_segment_used_for_sichuan_physics():
+    t = rank_score.build_table("四川", "物理")
+    assert t.source.is_real
+    assert "四川省教育考试院" in t.source.label
+
+
+def test_real_segment_matches_official_anchors():
+    """关键锚点应与官方公布值精确一致。"""
+    t = rank_score.build_table("四川", "物理")
+    for score, rank in [(600, 23461), (580, 37428), (650, 3413), (438, 207063)]:
+        assert t.rank_for_score(score).value == rank
+
+
+def test_subject_without_real_segment_falls_back_to_mock():
+    t = rank_score.build_table("四川", "历史")
+    assert t is not None
+    assert t.source.is_real is False

@@ -42,6 +42,11 @@ if table is None:
     st.warning(f"{province} · {subject} 的数据不足，暂无法换算。")
     st.stop()
 
+if table.source.is_real:
+    link = f"（[来源]({table.source.url})）" if table.source.url else ""
+    st.success(f"✅ 真实数据：{table.source.label}{link}")
+else:
+    st.warning("⚠️ 本省该科类暂无真实一分一段，下列换算基于**模拟数据**推导，仅供演示。")
 st.caption(f"实测覆盖：分数 {table.score_min}~{table.score_max} 分"
            f"｜位次 {table.rank_best}~{table.rank_worst}。超出部分按趋势估算。")
 

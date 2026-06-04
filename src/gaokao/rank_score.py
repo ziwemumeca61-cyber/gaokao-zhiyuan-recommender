@@ -11,19 +11,33 @@
 from __future__ import annotations
 
 import bisect
+import csv
+import json
 import math
 from dataclasses import dataclass
 from functools import lru_cache
 
-from .data_loader import load_admissions
+from .data_loader import DATA_DIR, load_admissions
+
+# 真实一分一段种子数据目录（公开政府统计事实，带出处，可提交）
+SEGMENTS_DIR = DATA_DIR / "segments"
 
 
 @dataclass
 class Conversion:
-    """一次换算结果。clamped 为 True 表示输入超出数据范围、取了边界估计。"""
+    """一次换算结果。clamped 为 True 表示超出实测分数段、按趋势外推的估算值。"""
 
     value: int
     clamped: bool
+
+
+@dataclass
+class SourceMeta:
+    """一分一段数据来源。is_real 为 True 表示真实官方数据，否则为模拟推导。"""
+
+    is_real: bool
+    label: str = ""   # 人类可读的来源说明（含出处）
+    url: str = ""
 
 
 class ScoreRankTable:
@@ -33,9 +47,11 @@ class ScoreRankTable:
     （log10(rank) = a + b·score），并把结果标记为 clamped=True 表示"超出实测、估算"。
     """
 
-    def __init__(self, scores: list[int], ranks: list[int]) -> None:
+    def __init__(self, scores: list[int], ranks: list[int],
+                 source: SourceMeta | None = None) -> None:
         self.scores = scores
         self.ranks = ranks
+        self.source = source or SourceMeta(is_real=False, label="模拟数据推导")
         self._log_ranks = [math.log10(r) for r in ranks]
         self._a, self._b = _linfit(scores, self._log_ranks)
 
@@ -108,8 +124,58 @@ def _interp(xs: list[float], ys: list[float], x: float) -> float:
     return y0 + t * (y1 - y0)
 
 
+def _load_real_segment(province: str, subject_type: str) -> ScoreRankTable | None:
+    """优先加载真实一分一段种子（data/segments），取该省该科类最新年份。"""
+    if not SEGMENTS_DIR.exists():
+        return None
+    matches = sorted(SEGMENTS_DIR.glob(f"{province}_{subject_type}_*.csv"))
+    if not matches:
+        return None
+    fpath = matches[-1]  # 文件名年份升序，取最新
+    scores, ranks = [], []
+    with fpath.open("r", encoding="utf-8-sig", newline="") as f:
+        for row in csv.DictReader(f):
+            s, r = int(float(row["score"])), int(float(row["rank"]))
+            if r > 0:
+                scores.append(s)
+                ranks.append(r)
+    if len(scores) < 2:
+        return None
+    # 按分数升序、位次随之非增
+    order = sorted(range(len(scores)), key=lambda i: scores[i])
+    scores = [scores[i] for i in order]
+    ranks = [ranks[i] for i in order]
+    for i in range(1, len(ranks)):
+        if ranks[i] > ranks[i - 1]:
+            ranks[i] = ranks[i - 1]
+    return ScoreRankTable(scores, ranks, source=_segment_source(fpath.stem))
+
+
+def _segment_source(key: str) -> SourceMeta:
+    """从 sources.json 读取某份种子数据的出处。"""
+    meta_path = SEGMENTS_DIR / "sources.json"
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8")).get(key, {})
+    except Exception:  # noqa: BLE001
+        meta = {}
+    src, title = meta.get("source", ""), meta.get("title", "")
+    if src and title:
+        label = f"{src}《{title}》"
+    elif title:
+        label = f"《{title}》"
+    else:
+        label = src or "真实公开数据"
+    return SourceMeta(is_real=True, label=label, url=meta.get("url", ""))
+
+
 @lru_cache(maxsize=None)
 def _build_cached(province: str, subject_type: str, data_dir: str | None) -> ScoreRankTable | None:
+    # 1) 真实一分一段种子优先
+    real = _load_real_segment(province, subject_type)
+    if real is not None:
+        return real
+
+    # 2) 回退：从（模拟）录取数据推导
     pairs: dict[int, list[int]] = {}
     for rec in load_admissions(data_dir):
         if rec.province == province and rec.subject_type == subject_type:
