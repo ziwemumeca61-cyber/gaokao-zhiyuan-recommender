@@ -26,17 +26,28 @@ student = get_student()
 # 省份候选 = 录取数据里的省份 ∪ 有真实一分一段种子的省份
 provinces = sorted(set(available_provinces()) | set(rank_score.segment_provinces()))
 
-# ---------- 省份/科类（默认取考生已填） ----------
+# ---------- 省份/科类（科类随省份动态：3+3 省份为"综合"） ----------
 c1, c2 = st.columns(2)
 with c1:
     p_idx = provinces.index(student.province) if student and student.province in provinces else 0
     province = st.selectbox("生源所在省份", provinces, index=p_idx)
 with c2:
-    s_idx = 1 if student and student.subject_type == "历史" else 0
-    subject = st.radio("选科科类", ["物理", "历史"], index=s_idx, horizontal=True)
+    seg_subjects = [s for (p, s) in rank_score.segment_pairs() if p == province]
+    subjects = (["物理", "历史"] if province in available_provinces() else [])
+    for s in seg_subjects:
+        if s not in subjects:
+            subjects.append(s)
+    subjects = subjects or ["物理", "历史"]
+    s_idx = subjects.index(student.subject_type) if (
+        student and student.subject_type in subjects) else 0
+    subject = st.radio("选科科类", subjects, index=s_idx, horizontal=True)
 
-st.info(f"📍 以下换算基于 **{province} · {subject}** 的历年录取数据。"
-        "高考按省份分别划线，跨省的分数/位次不可直接换算或比较。")
+if subject == "综合":
+    st.info(f"📍 {province} 为 3+3 模式，不分物理/历史，采用**全省统一**的综合一分一段。"
+            "高考按省份分别划线，跨省的分数/位次不可直接换算或比较。")
+else:
+    st.info(f"📍 以下换算基于 **{province} · {subject}** 的数据。"
+            "高考按省份分别划线，跨省的分数/位次不可直接换算或比较。")
 
 table = rank_score.build_table(province, subject)
 if table is None:
@@ -61,8 +72,10 @@ def _note(conv) -> None:
 left, right = st.columns(2)
 with left:
     st.markdown("#### 分数 → 位次")
-    score_in = st.number_input("输入高考分数", min_value=200, max_value=750,
-                               value=int(student.score) if student else 600, step=1)
+    _smax = 900 if table.score_max > 750 else 750
+    _sdefault = min(max(int(student.score) if student else 600, 200), _smax)
+    score_in = st.number_input("输入高考分数", min_value=0, max_value=_smax,
+                               value=_sdefault, step=1)
     conv_r = table.rank_for_score(score_in)
     st.metric("对应全省位次", f"{conv_r.value:,}")
     _note(conv_r)

@@ -93,3 +93,16 @@ def test_seed_anchors_match_official_values():
     for province, subject, score, rank in cases:
         t = rank_score.build_table(province, subject)
         assert t.rank_for_score(score).value == rank, f"{province}{subject}{score}"
+
+
+def test_3plus3_provinces_use_zonghe_subject():
+    """3+3 省份不分物理/历史，应有'综合'种子且锚点命中官方值。"""
+    cases = [
+        ("山东", 600, 25061), ("浙江", 660, 6995), ("上海", 600, 1250),
+        ("海南", 800, 105), ("北京", 600, 11883), ("天津", 550, 25874),
+    ]
+    for province, score, rank in cases:
+        assert (province, "综合") in rank_score.segment_pairs()
+        t = rank_score.build_table(province, "综合")
+        assert t is not None and t.source.is_real
+        assert t.rank_for_score(score).value == rank, f"{province}{score}"
