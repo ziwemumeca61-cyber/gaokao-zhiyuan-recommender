@@ -70,12 +70,23 @@ st.divider()
 # ---------- 冲稳保三列 ----------
 tier_help = {"冲": "🚀 冲一冲：略高于你的位次", "稳": "🎯 稳一稳：与你位次相近",
              "保": "🛡️ 保一保：你有明显优势"}
+# 空档位的友好提示（按风险给不同口吻；保底为空最危险）
+tier_empty = {
+    "冲": "ℹ️ 当前科类/位次暂无合适的冲刺项，建议把精力放在稳、保两档。",
+    "稳": "ℹ️ 暂无稳妥项，注意把冲与保搭配好，避免梯度断层。",
+    "保": "⚠️ 暂无保底项！请务必再补充几个有把握的志愿，谨防滑档。",
+}
 columns = st.columns(3)
 for col, tier in zip(columns, TIERS):
     with col:
         recs = buckets[tier]
         st.markdown(f"### {tier}（{len(recs)}）")
         st.caption(tier_help[tier])
+        if not recs:
+            if tier == "保":
+                st.warning(tier_empty[tier])
+            else:
+                st.info(tier_empty[tier])
         for rec in recs:
             with st.container(border=True):
                 st.markdown(f"**{rec.school.name} · {rec.major.name}**")
