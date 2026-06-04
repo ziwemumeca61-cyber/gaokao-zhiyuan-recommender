@@ -80,7 +80,9 @@ def build_markdown_report(
                 f"（{rec.school.level}/{rec.school.city}）")
             lines.append(
                 f"- 参考位次 {rec.ref_rank}　参考分 {rec.ref_score}　"
-                f"录取概率 {rec.probability * 100:.0f}%　综合分 {rec.composite_score:.2f}")
+                f"录取概率 {rec.probability * 100:.0f}%"
+                f"（{rec.prob_low * 100:.0f}–{rec.prob_high * 100:.0f}%，把握度{rec.confidence}）"
+                f"　综合分 {rec.composite_score:.2f}")
             if rec.major.intro:
                 lines.append(f"- 专业简介：{rec.major.intro}")
             if rec.reasons:
@@ -158,7 +160,8 @@ def build_docx_report(student: Student, buckets: dict[str, list[Recommendation]]
             doc.add_heading(f"{i}. {rec.school.name} · {rec.major.name}", level=2)
             doc.add_paragraph(
                 f"{rec.school.level}/{rec.school.city}　参考位次 {rec.ref_rank}　"
-                f"录取概率 {rec.probability * 100:.0f}%")
+                f"录取概率 {rec.probability * 100:.0f}%"
+                f"（{rec.prob_low * 100:.0f}–{rec.prob_high * 100:.0f}%，把握度{rec.confidence}）")
             if rec.major.intro:
                 doc.add_paragraph(f"专业简介：{rec.major.intro}")
             if rec.reasons:
@@ -239,8 +242,9 @@ def build_pdf_report(student: Student, buckets: dict[str, list[Recommendation]])
                 f"（{rec.school.level}/{rec.school.city}）", "h3"))
             blocks.append((
                 f"参考位次 {rec.ref_rank}　参考分 {rec.ref_score}　"
-                f"录取概率 {rec.probability * 100:.0f}%　综合分 {rec.composite_score:.2f}",
-                "body"))
+                f"录取概率 {rec.probability * 100:.0f}%"
+                f"（{rec.prob_low * 100:.0f}–{rec.prob_high * 100:.0f}%，把握度{rec.confidence}）"
+                f"　综合分 {rec.composite_score:.2f}", "body"))
             if rec.reasons:
                 blocks.append(("推荐理由：" + "；".join(rec.reasons), "body"))
     return _pdf_bytes(blocks)

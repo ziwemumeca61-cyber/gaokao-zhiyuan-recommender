@@ -31,16 +31,21 @@ def recommend(
         if tier is None:
             continue
 
-        probability = ml_model.predict_prob(student.rank, stat.ref_rank, stat.trend)
+        probability, prob_low, prob_high = ml_model.predict_interval(
+            student.rank, stat.ref_rank, stat.trend,
+            rank_cv=stat.rank_cv, years=stat.years, plan=stat.total_plan)
+        confidence = ml_model.confidence_label(prob_low, prob_high)
         interest_match = interest.match(student.riasec, major.riasec_code)
         composite = scoring.composite(
             student, school, major, probability, interest_match, weights)
         reasons = _build_reasons(student, school, major, stat, tier,
-                                 probability, interest_match)
+                                 probability, prob_low, prob_high, confidence,
+                                 interest_match)
         buckets[tier].append(Recommendation(
             school=school, major=major, tier=tier, probability=probability,
             interest_match=interest_match, composite_score=composite,
             ref_rank=stat.ref_rank, ref_score=stat.ref_score, reasons=reasons,
+            prob_low=prob_low, prob_high=prob_high, confidence=confidence,
         ))
 
     for tier in TIERS:
@@ -49,7 +54,8 @@ def recommend(
     return buckets
 
 
-def _build_reasons(student, school, major, stat, tier, probability, interest_match):
+def _build_reasons(student, school, major, stat, tier, probability,
+                   prob_low, prob_high, confidence, interest_match):
     reasons: list[str] = []
     r = rank_based.ratio(student.rank, stat.ref_rank)
     if tier == "冲":
@@ -59,7 +65,9 @@ def _build_reasons(student, school, major, stat, tier, probability, interest_mat
     else:
         reasons.append(f"院校近年位次约 {stat.ref_rank}，你有明显优势（{r:.2f}），适合保底")
 
-    reasons.append(f"模型预测录取概率约 {probability * 100:.0f}%")
+    reasons.append(
+        f"模型预测录取概率约 {probability * 100:.0f}%"
+        f"（区间 {prob_low * 100:.0f}%–{prob_high * 100:.0f}%，把握度{confidence}）")
 
     if student.has_assessment():
         if interest_match >= 0.7:

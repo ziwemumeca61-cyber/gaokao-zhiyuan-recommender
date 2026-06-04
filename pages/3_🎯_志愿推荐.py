@@ -78,10 +78,12 @@ for col, tier in zip(columns, TIERS):
             with st.container(border=True):
                 st.markdown(f"**{rec.school.name} · {rec.major.name}**")
                 st.caption(school_caption(rec.school))
-                st.progress(rec.probability,
-                            text=f"录取概率 {rec.probability * 100:.0f}%")
-                st.caption(f"参考位次 {rec.ref_rank}｜参考分 {rec.ref_score}"
-                           f"｜综合分 {rec.composite_score:.2f}")
+                st.progress(
+                    rec.probability,
+                    text=f"录取概率 {rec.probability * 100:.0f}%"
+                         f"（{rec.prob_low * 100:.0f}–{rec.prob_high * 100:.0f}%）")
+                st.caption(f"把握度 {rec.confidence}｜参考位次 {rec.ref_rank}"
+                           f"｜参考分 {rec.ref_score}｜综合分 {rec.composite_score:.2f}")
                 for reason in rec.reasons:
                     st.markdown(f"- {reason}")
                 with st.expander("📚 这个专业是干嘛的？"):

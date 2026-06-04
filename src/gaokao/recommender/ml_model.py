@@ -62,3 +62,49 @@ def predict_prob(student_rank: int, ref_rank: int, trend: float = 0.0) -> float:
 
     feat = np.array([_features(student_rank, ref_rank, trend)])
     return round(float(model.predict_proba(feat)[0][1]), 4)
+
+
+# ---------------------------------------------------------------------------
+# 概率校准：用参考位次的不确定性推导录取概率的置信区间
+# ---------------------------------------------------------------------------
+_BASE_SIGMA = 0.18   # 缺历史波动信息时的先验相对不确定性（对数位次）
+_PLAN_SIGMA = 1.0    # 招生计划越少，录取线越不稳定的系数
+
+
+def _sigma_log_ref(rank_cv: float, years: int, plan: int) -> float:
+    """估计参考位次在对数尺度上的标准差，越大表示越不确定。
+
+    三个来源：历史位次波动(rank_cv)、可用年份(小样本膨胀)、招生计划(计划越少越抖)。
+    """
+    hist = rank_cv if years >= 2 else _BASE_SIGMA
+    hist = max(hist, _BASE_SIGMA / math.sqrt(max(years, 1)))
+    plan_term = _PLAN_SIGMA / math.sqrt(max(plan, 1))
+    return math.sqrt(hist * hist + plan_term * plan_term)
+
+
+def predict_interval(
+    student_rank: int, ref_rank: int, trend: float = 0.0, *,
+    rank_cv: float = 0.0, years: int = 1, plan: int = 1, z: float = 1.0,
+) -> tuple[float, float, float]:
+    """返回 (点估计, 下界, 上界)。
+
+    在对数位次维度上把参考位次按 ±z·σ 扰动，复用同一个预测器求概率端点——
+    因此与 sklearn / 解析式兜底都一致，且区间天然落在 [0,1]。
+    """
+    p = predict_prob(student_rank, ref_rank, trend)
+    sigma = _sigma_log_ref(rank_cv, years, plan)
+    ref_lo = max(1, round(ref_rank * math.exp(-z * sigma)))
+    ref_hi = max(1, round(ref_rank * math.exp(z * sigma)))
+    a = predict_prob(student_rank, ref_lo, trend)
+    b = predict_prob(student_rank, ref_hi, trend)
+    return p, min(a, b), max(a, b)
+
+
+def confidence_label(low: float, high: float) -> str:
+    """按区间宽度给"把握度"标签：越窄越有把握。"""
+    width = high - low
+    if width <= 0.18:
+        return "高"
+    if width <= 0.38:
+        return "中"
+    return "低"

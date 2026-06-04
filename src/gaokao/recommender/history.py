@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -24,6 +25,7 @@ class HistoryStat:
     trend: float         # 位次年度变化率（>0 表示位次走高/竞争加剧）
     total_plan: int      # 近一年招生计划数
     years: int           # 可用年份数
+    rank_cv: float       # 近年位次的对数波动（标准差），衡量录取线稳定性
 
 
 def aggregate(
@@ -47,8 +49,20 @@ def aggregate(
         stats[key] = HistoryStat(
             school_id=key[0], major_id=key[1], ref_rank=ref_rank, ref_score=ref_score,
             trend=trend, total_plan=recent[0].plan_count, years=len(recs),
+            rank_cv=_rank_cv(recent),
         )
     return stats
+
+
+def _rank_cv(recent: list[AdmissionRecord]) -> float:
+    """近年位次在对数尺度上的标准差，作为录取线波动度。单年返回 0。"""
+    ranks = [r.min_rank for r in recent if r.min_rank > 0]
+    if len(ranks) < 2:
+        return 0.0
+    logs = [math.log(x) for x in ranks]
+    mean = sum(logs) / len(logs)
+    var = sum((x - mean) ** 2 for x in logs) / len(logs)
+    return math.sqrt(var)
 
 
 def _trend(recent: list[AdmissionRecord]) -> float:

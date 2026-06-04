@@ -100,9 +100,12 @@ class Recommendation:
     school: School
     major: Major
     tier: str  # 冲/稳/保
-    probability: float  # 录取概率 0~1
+    probability: float  # 录取概率 0~1（点估计）
     interest_match: float  # 兴趣匹配度 0~1
     composite_score: float  # 综合排序分 0~1
     ref_rank: int  # 参考录取位次（近年加权）
     ref_score: int  # 参考录取分数
     reasons: list[str] = field(default_factory=list)
+    prob_low: float = 0.0   # 录取概率置信区间下界
+    prob_high: float = 0.0  # 录取概率置信区间上界
+    confidence: str = ""    # 把握度标签：高/中/低（区间越窄越有把握）
