@@ -38,6 +38,8 @@ if not items:
     st.stop()
 
 st.success(f"心愿单共 {len(items)} 个志愿。可上移/下移调整顺序，或移出。")
+if len(items) >= 2:
+    st.page_link("pages/9_🆚_院校对比.py", label="🆚 把这些院校放一起对比", icon="🆚")
 
 # ---------- 一键导出 ----------
 with st.container(border=True):
