@@ -130,8 +130,6 @@ table = {
     "概率区间": _row_vals(lambda r: f"{_fmt_pct(r.prob_low)}–{_fmt_pct(r.prob_high)}"),
     "把握度": _row_vals(lambda r: r.confidence),
     "兴趣匹配": _row_vals(lambda r: _fmt_pct(r.interest_match)),
-    "就业率": [_fmt_pct(r.major.employment_rate) for r in rows],
-    "专业热度": [f"{r.major.heat:.0f}" for r in rows],
     "综合分": _row_vals(lambda r: f"{r.composite_score:.2f}"),
 }
 df = pd.DataFrame(table, index=col_names).T
@@ -147,8 +145,6 @@ if data_rows:
         name = f"{r.school.name}·{r.major.name}"
         long.append({"候选": name, "指标": "录取概率", "数值": round(r.probability * 100)})
         long.append({"候选": name, "指标": "兴趣匹配", "数值": round(r.interest_match * 100)})
-        long.append({"候选": name, "指标": "就业率",
-                     "数值": round(r.major.employment_rate * 100)})
         long.append({"候选": name, "指标": "综合分", "数值": round(r.composite_score * 100)})
     fig = px.bar(pd.DataFrame(long), x="指标", y="数值", color="候选",
                  barmode="group", labels={"数值": "分值(0~100)"})
@@ -156,4 +152,4 @@ if data_rows:
     st.plotly_chart(fig, use_container_width=True)
 
 st.caption("说明：所有分数线/位次均为 " + f"{student.province}·{student.subject_type}"
-           " 口径；综合分由录取概率、兴趣、就业、热度及你的城市/层次/门类偏好加权得出。")
+           " 口径；综合分由录取概率、兴趣匹配及你的城市/层次/门类偏好加权得出。")

@@ -106,19 +106,18 @@ def wishlist_items() -> list[tuple[object, Major]]:
 
 # ---------- 渲染组件 ----------
 def render_major_detail(major: Major) -> None:
-    """专业科普详情：是什么 / 学什么 / 干什么 / 适合谁。"""
-    if major.intro:
-        st.markdown(f"**这是什么** ｜ {major.intro}")
-    if major.core_courses:
-        st.markdown("**主修课程** ｜ " + "、".join(major.core_courses))
-    if major.career_paths:
-        st.markdown("**就业方向** ｜ " + "、".join(major.career_paths))
-    if major.industry_outlook:
-        st.markdown(f"**行业前景** ｜ {major.industry_outlook}")
-    if major.suits:
-        st.markdown(f"**适合谁** ｜ {major.suits}")
-    st.caption(f"学科门类：{major.category}　就业率：{major.employment_rate * 100:.0f}%"
-               f"　热度：{major.heat:.0f}")
+    """专业科普详情：是什么 / 学什么 / 干什么 / 适合谁（缺失字段用知识库兜底）。"""
+    from .major_knowledge import detail_for  # noqa: PLC0415
+
+    d = detail_for(major)
+    st.markdown(f"**专业简介** ｜ {d['intro']}")
+    st.markdown("**主修课程** ｜ " + "、".join(d["core_courses"]))
+    st.markdown("**就业去向** ｜ " + "、".join(d["career_paths"]))
+    if d["industry_outlook"]:
+        st.markdown(f"**行业前景** ｜ {d['industry_outlook']}")
+    if d["suits"]:
+        st.markdown(f"**适合谁** ｜ {d['suits']}")
+    st.caption(f"学科门类：{major.category}")
 
 
 def wishlist_button(major: Major, key: str) -> None:

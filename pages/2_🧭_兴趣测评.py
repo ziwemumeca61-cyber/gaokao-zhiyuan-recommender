@@ -57,10 +57,9 @@ if riasec:
     shown: set[str] = set()
     for cat in assessment.suggested_categories(riasec):
         cat_majors = [m for m in majors if m.category == cat and m.name not in shown]
-        # 每个门类挑热度最高的几个去重展示
-        cat_majors.sort(key=lambda m: m.heat, reverse=True)
+        cat_majors.sort(key=lambda m: m.name)
         for m in cat_majors[:3]:
             shown.add(m.name)
-            with st.expander(f"{m.name}　`{cat}`　🔥{m.heat:.0f}"):
+            with st.expander(f"{m.name}　`{cat}`"):
                 render_major_detail(m)
                 wishlist_button(m, key=f"wish_assess_{m.id}")
