@@ -128,9 +128,10 @@ def test_resolve_prefers_env_over_mock(tmp_path, monkeypatch):
     assert is_real and path == out
 
 
-def test_default_is_mock_when_no_real(monkeypatch):
+def test_default_is_mock_when_no_real(tmp_path, monkeypatch):
     monkeypatch.delenv("GAOKAO_DATA_DIR", raising=False)
-    # 未导入真实数据时应回退到 data/（模拟）
+    # 把真实数据目录指向一个不存在的位置，模拟"未导入真实数据"
+    monkeypatch.setattr(data_loader, "REAL_DIR", tmp_path / "no_real")
     assert data_loader.resolve_data_dir() == data_loader.DATA_DIR
     _, is_real = data_loader.active_source()
     assert is_real is False

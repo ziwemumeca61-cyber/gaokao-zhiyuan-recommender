@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import streamlit as st  # noqa: E402
 
 from gaokao.data_loader import (  # noqa: E402
-    available_categories, available_cities, available_provinces,
+    available_categories, available_cities, available_provinces, available_subjects,
 )
 from gaokao.models import Student  # noqa: E402
 from gaokao.ui_helpers import ensure_data, get_student  # noqa: E402
@@ -27,25 +27,29 @@ provinces = available_provinces()
 cities = available_cities()
 categories = available_categories()
 
+# 省份放在表单外：切换省份即刷新可选科类（不同省份科类不同，如 3+3 省份为"综合"）
+province = st.selectbox(
+    "生源所在省份 *", provinces,
+    index=provinces.index(existing.province) if existing
+    and existing.province in provinces else 0,
+    help="即你高考报名的省份。高考按省份分别划线录取，"
+         "所有分数线/位次都基于此省，跨省不可直接比较。")
+subjects = available_subjects(province) or ["物理", "历史"]
+
 with st.form("student_form"):
     c1, c2 = st.columns(2)
     with c1:
         score = st.number_input("高考分数 *", min_value=200, max_value=750,
                                 value=int(existing.score) if existing else 600)
-        province = st.selectbox(
-            "生源所在省份 *", provinces,
-            index=provinces.index(existing.province) if existing
-            and existing.province in provinces else 0,
-            help="即你高考报名的省份。高考按省份分别划线录取，"
-                 "所有分数线/位次都基于此省，跨省不可直接比较。")
+        subject_type = st.radio(
+            "选科科类 *", subjects,
+            index=subjects.index(existing.subject_type) if (
+                existing and existing.subject_type in subjects) else 0,
+            horizontal=True)
     with c2:
         rank = st.number_input("全省位次 *", min_value=1, max_value=500000,
                                value=int(existing.rank) if existing else 15000,
                                help="位次比分数更稳定，是志愿推荐的核心依据")
-        subject_type = st.radio(
-            "选科科类 *", ["物理", "历史"],
-            index=0 if not existing or existing.subject_type == "物理" else 1,
-            horizontal=True)
 
     st.markdown("**偏好（可选，用于个性化排序）**")
     c3, c4, c5 = st.columns(3)

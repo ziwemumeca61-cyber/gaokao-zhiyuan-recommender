@@ -22,6 +22,8 @@ def recommend(
     stats = aggregate(admissions, student.province, student.subject_type)
     buckets: dict[str, list[Recommendation]] = {t: [] for t in TIERS}
 
+    # 第一遍：筛出冲稳保区间内的候选（概率稍后批量计算）
+    picked: list[tuple] = []  # (tier, school, major, stat)
     for (school_id, major_id), stat in stats.items():
         school = schools.get(school_id)
         major = majors.get(major_id)
@@ -30,10 +32,16 @@ def recommend(
         tier = rank_based.classify(student.rank, stat.ref_rank)
         if tier is None:
             continue
+        picked.append((tier, school, major, stat))
 
-        probability, prob_low, prob_high = ml_model.predict_interval(
-            student.rank, stat.ref_rank, stat.trend,
-            rank_cv=stat.rank_cv, years=stat.years, plan=stat.total_plan)
+    # 批量计算录取概率区间（一次矩阵预测，远快于逐候选调用 sklearn）
+    intervals = ml_model.predict_intervals(
+        student.rank,
+        [(s.ref_rank, s.trend, s.rank_cv, s.years, s.total_plan)
+         for (_, _, _, s) in picked])
+
+    for (tier, school, major, stat), (probability, prob_low, prob_high) in zip(
+            picked, intervals):
         confidence = ml_model.confidence_label(prob_low, prob_high)
         interest_match = interest.match(student.riasec, major.riasec_code)
         composite = scoring.composite(

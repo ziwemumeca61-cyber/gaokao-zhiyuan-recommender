@@ -72,4 +72,5 @@ def _trend(recent: list[AdmissionRecord]) -> float:
     newest, oldest = recent[0].min_rank, recent[-1].min_rank
     if oldest <= 0:
         return 0.0
-    return (oldest - newest) / oldest
+    # 钳制到 [-0.5, 0.5]：真实数据中个别专业历年位次波动极大，避免趋势主导概率
+    return max(-0.5, min(0.5, (oldest - newest) / oldest))

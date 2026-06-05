@@ -64,6 +64,23 @@ def predict_prob(student_rank: int, ref_rank: int, trend: float = 0.0) -> float:
     return round(float(model.predict_proba(feat)[0][1]), 4)
 
 
+def _predict_many(feats: list[list[float]]) -> list[float]:
+    """批量预测：sklearn 一次性 predict_proba；无 sklearn 时逐行解析式兜底。"""
+    if not feats:
+        return []
+    model = _trained_model()
+    if model is None:
+        out = []
+        for ratio, tr in feats:
+            z = _K_RATIO * ratio - _K_TREND * tr
+            out.append(round(1.0 / (1.0 + math.exp(-z)), 4))
+        return out
+    import numpy as np  # noqa: PLC0415
+
+    probs = model.predict_proba(np.array(feats))[:, 1]
+    return [round(float(p), 4) for p in probs]
+
+
 # ---------------------------------------------------------------------------
 # 概率校准：用参考位次的不确定性推导录取概率的置信区间
 # ---------------------------------------------------------------------------
@@ -98,6 +115,33 @@ def predict_interval(
     a = predict_prob(student_rank, ref_lo, trend)
     b = predict_prob(student_rank, ref_hi, trend)
     return p, min(a, b), max(a, b)
+
+
+def predict_intervals(
+    student_rank: int,
+    candidates: list[tuple[int, float, float, int, int]],
+    z: float = 1.0,
+) -> list[tuple[float, float, float]]:
+    """批量版 predict_interval。
+
+    candidates: 每项 (ref_rank, trend, rank_cv, years, plan)。
+    返回与之一一对应的 (点估计, 下界, 上界)。所有候选的点/上/下三点特征拼成一个
+    矩阵一次预测，避免逐候选调用 sklearn 的高开销。
+    """
+    feats: list[list[float]] = []
+    for ref, trend, rank_cv, years, plan in candidates:
+        sigma = _sigma_log_ref(rank_cv, years, plan)
+        ref_lo = max(1, round(ref * math.exp(-z * sigma)))
+        ref_hi = max(1, round(ref * math.exp(z * sigma)))
+        feats.append(_features(student_rank, ref, trend))
+        feats.append(_features(student_rank, ref_lo, trend))
+        feats.append(_features(student_rank, ref_hi, trend))
+    probs = _predict_many(feats)
+    out: list[tuple[float, float, float]] = []
+    for i in range(0, len(probs), 3):
+        p, a, b = probs[i], probs[i + 1], probs[i + 2]
+        out.append((p, min(a, b), max(a, b)))
+    return out
 
 
 def confidence_label(low: float, high: float) -> str:
