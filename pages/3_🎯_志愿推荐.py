@@ -17,7 +17,6 @@ from gaokao.ui_helpers import (  # noqa: E402
     scope_label, school_caption, wishlist_button,
 )
 
-st.set_page_config(page_title="志愿推荐", page_icon="🎯", layout="wide")
 st.title("🎯 志愿推荐")
 
 if not ensure_data():

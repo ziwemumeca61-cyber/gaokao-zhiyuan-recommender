@@ -14,7 +14,6 @@ from gaokao.data_loader import load_majors  # noqa: E402
 from gaokao.models import TIERS  # noqa: E402
 from gaokao.ui_helpers import ensure_data, get_student, get_wishlist  # noqa: E402
 
-st.set_page_config(page_title="AI 助手", page_icon="🤖", layout="centered")
 st.title("🤖 AI 志愿小助手")
 st.caption("由 DeepSeek 提供。可以问：『计算机和软件工程有啥区别？』『金融适合我吗？』")
 

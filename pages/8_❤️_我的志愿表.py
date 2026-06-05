@@ -16,7 +16,6 @@ from gaokao.ui_helpers import (  # noqa: E402
     wishlist_items,
 )
 
-st.set_page_config(page_title="我的志愿表", page_icon="❤️", layout="wide")
 st.title("❤️ 我的志愿表")
 st.caption("把心仪的 院校·专业 排好顺序，越靠前优先级越高，最后一键导出。")
 

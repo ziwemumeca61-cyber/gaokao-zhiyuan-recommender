@@ -17,7 +17,6 @@ from gaokao.data_loader import (  # noqa: E402
 from gaokao.data_schema import CANONICAL_COLUMNS, REQUIRED_COLUMNS, validate_dataset  # noqa: E402
 from gaokao.ui_helpers import ensure_data  # noqa: E402
 
-st.set_page_config(page_title="数据源", page_icon="⚙️", layout="wide")
 st.title("⚙️ 数据源")
 st.caption("系统优先使用导入的真实录取数据；未导入时回退到内置模拟数据用于演示。")
 

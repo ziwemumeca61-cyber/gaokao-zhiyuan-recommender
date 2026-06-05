@@ -16,7 +16,6 @@ from gaokao.ui_helpers import (  # noqa: E402
     wishlist_button,
 )
 
-st.set_page_config(page_title="兴趣测评", page_icon="🧭", layout="wide")
 st.title("🧭 霍兰德兴趣测评")
 st.caption("24 道小题，了解你是哪种'职业兴趣类型'，从'你是什么样的人'找到'适合的专业'。")
 

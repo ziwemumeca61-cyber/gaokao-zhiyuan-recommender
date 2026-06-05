@@ -17,7 +17,6 @@ from gaokao.ui_helpers import (  # noqa: E402
     school_caption, toggle_wishlist,
 )
 
-st.set_page_config(page_title="卡片选校", page_icon="🃏", layout="centered")
 st.title("🃏 卡片选校")
 st.caption("一张张来，喜欢就 ❤️，不感冒就 👉。喜欢的会进入心愿单。")
 

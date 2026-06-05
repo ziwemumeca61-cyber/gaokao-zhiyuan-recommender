@@ -17,7 +17,6 @@ from gaokao.ui_helpers import (  # noqa: E402
     ensure_data, render_scope_banner, require_student, riasec_radar, scope_label,
 )
 
-st.set_page_config(page_title="数据大屏", page_icon="📊", layout="wide")
 st.title("📊 数据大屏")
 
 if not ensure_data():

@@ -18,7 +18,6 @@ from gaokao.ui_helpers import (  # noqa: E402
     school_caption, wishlist_button,
 )
 
-st.set_page_config(page_title="院校对比", page_icon="🆚", layout="wide")
 st.title("🆚 院校对比")
 st.caption("把纠结的几个 院校·专业 放一起比，一眼看清谁更稳、谁更合适。")
 

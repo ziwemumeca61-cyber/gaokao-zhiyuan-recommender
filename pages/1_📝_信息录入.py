@@ -15,7 +15,6 @@ from gaokao.data_loader import (  # noqa: E402
 from gaokao.models import Student  # noqa: E402
 from gaokao.ui_helpers import ensure_data, get_student  # noqa: E402
 
-st.set_page_config(page_title="信息录入", page_icon="📝", layout="wide")
 st.title("📝 信息录入")
 st.caption("填写你的高考信息与偏好，系统据此为你量身推荐。带 * 为必填。")
 

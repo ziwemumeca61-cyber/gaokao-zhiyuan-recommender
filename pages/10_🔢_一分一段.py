@@ -15,7 +15,6 @@ from gaokao.data_loader import available_provinces  # noqa: E402
 from gaokao.models import RIASEC_DIMENSIONS, Student  # noqa: E402
 from gaokao.ui_helpers import ensure_data, get_student, set_student  # noqa: E402
 
-st.set_page_config(page_title="一分一段", page_icon="🔢", layout="wide")
 st.title("🔢 一分一段换算")
 st.caption("分数和位次是一回事的两种说法。高考按省划线，换算只在同省同科类内有意义。")
 

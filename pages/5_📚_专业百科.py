@@ -16,7 +16,6 @@ from gaokao.ui_helpers import (  # noqa: E402
     ensure_data, get_student, render_major_detail, school_caption, wishlist_button,
 )
 
-st.set_page_config(page_title="专业百科", page_icon="📚", layout="wide")
 st.title("📚 专业百科")
 st.caption("不知道专业是干嘛的？这里把每个专业讲明白：学什么课、将来干什么、适合什么样的人。")
 
