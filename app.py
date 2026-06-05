@@ -82,7 +82,7 @@ def render_home() -> None:
     with t[2]:
         st.page_link(encyclo_page, label="专业百科", icon="📚")
     with t[3]:
-        st.page_link(dashboard_page, label="数据大屏", icon="📊")
+        st.page_link(dashboard_page, label="志愿体检", icon="📋")
 
     st.caption("⚠️ 结果仅供参考，正式填报请以各省考试院与院校招生章程为准。")
 
@@ -94,7 +94,7 @@ assess_page = st.Page("pages/2_🧭_兴趣测评.py", title="兴趣测评", icon
 recommend_page = st.Page("pages/3_🎯_志愿推荐.py", title="志愿推荐", icon="🎯")
 cards_page = st.Page("pages/4_🃏_卡片选校.py", title="卡片选校", icon="🃏")
 encyclo_page = st.Page("pages/5_📚_专业百科.py", title="专业百科", icon="📚")
-dashboard_page = st.Page("pages/6_📊_数据大屏.py", title="数据大屏", icon="📊")
+dashboard_page = st.Page("pages/6_📊_数据大屏.py", title="志愿体检", icon="📋")
 ai_page = st.Page("pages/7_🤖_AI助手.py", title="AI 助手", icon="🤖")
 wishlist_page = st.Page("pages/8_❤️_我的志愿表.py", title="我的志愿表", icon="❤️")
 compare_page = st.Page("pages/9_🆚_院校对比.py", title="院校对比", icon="🆚")
