@@ -1,147 +1,70 @@
-"""录取概率预测。
+"""录取概率预测（基于真实历史波动校准）。
 
-用合成历史样本训练 scikit-learn 逻辑回归；若没有 sklearn，则退化为等价的
-解析式 sigmoid，保证概率预测永远可用。核心特征是考生位次与院校参考位次的对数比值
-log(ref_rank / student_rank)：考生位次越靠前（数字更小），录取概率越高。
+把"明年录取最低位次"建模为对数正态：中位数≈参考位次 ref，波动 σ 来自该专业历年
+录取位次的真实波动（再按可用年份/招生计划/趋势做小样本与稳定性修正）。考生位次 r 被
+录取的概率 = P(明年录取线位次 ≥ r) = Φ( ln(ref/r) / σ )，Φ 为标准正态分布函数。
+
+直觉：你的位次比参考线越靠前，概率越高；该专业历年越不稳定（σ 越大），概率越向 50%
+回归、区间越宽。纯数学实现，无需任何机器学习依赖。
 """
 
 from __future__ import annotations
 
 import math
-import random
-from functools import lru_cache
 
-# 解析式兜底的系数
-_K_RATIO = 2.6   # 对数位次比的权重
-_K_TREND = 0.8   # 竞争趋势的负向影响
-
-
-def _features(student_rank: int, ref_rank: int, trend: float) -> list[float]:
-    ratio = math.log((ref_rank + 1) / (student_rank + 1))
-    return [ratio, trend]
+_SQRT2 = math.sqrt(2.0)
+_BASE_SIGMA = 0.22   # 缺历史波动信息时的先验相对波动（对数位次）
+_PLAN_SIGMA = 1.0    # 招生计划越少，录取线越不稳定
+_TREND_SIGMA = 0.6   # 近年趋势越陡（大小年），不确定性越大
+_DEFAULT_SIGMA = 0.35
 
 
-def _analytic_prob(student_rank: int, ref_rank: int, trend: float) -> float:
-    ratio, tr = _features(student_rank, ref_rank, trend)
-    z = _K_RATIO * ratio - _K_TREND * tr
-    return 1.0 / (1.0 + math.exp(-z))
+def _phi(x: float) -> float:
+    """标准正态分布累积函数 Φ。"""
+    return 0.5 * (1.0 + math.erf(x / _SQRT2))
 
 
-@lru_cache(maxsize=1)
-def _trained_model():
-    """惰性训练逻辑回归；失败则返回 None 触发解析式兜底。"""
-    try:
-        import numpy as np  # noqa: PLC0415
-        from sklearn.linear_model import LogisticRegression  # noqa: PLC0415
-    except Exception:
-        return None
-
-    rng = random.Random(42)
-    X, y = [], []
-    for _ in range(4000):
-        student_rank = rng.randint(100, 200_000)
-        ref_rank = rng.randint(100, 200_000)
-        trend = rng.uniform(-0.2, 0.2)
-        feat = _features(student_rank, ref_rank, trend)
-        # 合成标签：解析式概率 + 噪声，门限 0.5
-        p = _analytic_prob(student_rank, ref_rank, trend)
-        label = 1 if rng.random() < p else 0
-        X.append(feat)
-        y.append(label)
-    model = LogisticRegression()
-    model.fit(np.array(X), np.array(y))
-    return model
-
-
-def predict_prob(student_rank: int, ref_rank: int, trend: float = 0.0) -> float:
-    """返回 0~1 的录取概率。"""
-    model = _trained_model()
-    if model is None:
-        return round(_analytic_prob(student_rank, ref_rank, trend), 4)
-    import numpy as np  # noqa: PLC0415
-
-    feat = np.array([_features(student_rank, ref_rank, trend)])
-    return round(float(model.predict_proba(feat)[0][1]), 4)
-
-
-def _predict_many(feats: list[list[float]]) -> list[float]:
-    """批量预测：sklearn 一次性 predict_proba；无 sklearn 时逐行解析式兜底。"""
-    if not feats:
-        return []
-    model = _trained_model()
-    if model is None:
-        out = []
-        for ratio, tr in feats:
-            z = _K_RATIO * ratio - _K_TREND * tr
-            out.append(round(1.0 / (1.0 + math.exp(-z)), 4))
-        return out
-    import numpy as np  # noqa: PLC0415
-
-    probs = model.predict_proba(np.array(feats))[:, 1]
-    return [round(float(p), 4) for p in probs]
-
-
-# ---------------------------------------------------------------------------
-# 概率校准：用参考位次的不确定性推导录取概率的置信区间
-# ---------------------------------------------------------------------------
-_BASE_SIGMA = 0.18   # 缺历史波动信息时的先验相对不确定性（对数位次）
-_PLAN_SIGMA = 1.0    # 招生计划越少，录取线越不稳定的系数
-
-
-def _sigma_log_ref(rank_cv: float, years: int, plan: int) -> float:
-    """估计参考位次在对数尺度上的标准差，越大表示越不确定。
-
-    三个来源：历史位次波动(rank_cv)、可用年份(小样本膨胀)、招生计划(计划越少越抖)。
-    """
+def _sigma(rank_cv: float, years: int, plan: int, trend: float = 0.0) -> float:
+    """估计录取线在对数位次上的波动 σ：历史波动 + 小样本膨胀 + 计划 + 趋势。"""
     hist = rank_cv if years >= 2 else _BASE_SIGMA
     hist = max(hist, _BASE_SIGMA / math.sqrt(max(years, 1)))
     plan_term = _PLAN_SIGMA / math.sqrt(max(plan, 1))
-    return math.sqrt(hist * hist + plan_term * plan_term)
+    trend_term = _TREND_SIGMA * abs(trend)
+    return math.sqrt(hist * hist + plan_term * plan_term + trend_term * trend_term)
+
+
+def predict_prob(student_rank: int, ref_rank: int, sigma: float = _DEFAULT_SIGMA) -> float:
+    """录取概率 = Φ( ln(ref/student) / σ )，夹到 [0.01, 0.99]（不承诺绝对录取/落榜）。"""
+    d = math.log((ref_rank + 1) / (student_rank + 1))
+    return round(min(0.99, max(0.01, _phi(d / max(sigma, 1e-6)))), 4)
+
+
+def predict_intervals(
+    student_rank: int,
+    candidates: list[tuple[int, float, float, int, int]],
+) -> list[tuple[float, float, float]]:
+    """批量返回 (点估计, 下界, 上界)。
+
+    candidates 每项 (ref_rank, trend, rank_cv, years, plan)。区间反映"参考位次估计"的
+    不确定性：以标准误 se=σ/√years 扰动 ref，得到概率上下界。
+    """
+    out: list[tuple[float, float, float]] = []
+    for ref, trend, rank_cv, years, plan in candidates:
+        sig = _sigma(rank_cv, years, plan, trend)
+        se = sig / math.sqrt(max(years, 1))
+        p = predict_prob(student_rank, ref, sig)
+        hi = predict_prob(student_rank, max(1, round(ref * math.exp(se))), sig)
+        lo = predict_prob(student_rank, max(1, round(ref * math.exp(-se))), sig)
+        out.append((p, min(lo, hi), max(lo, hi)))
+    return out
 
 
 def predict_interval(
     student_rank: int, ref_rank: int, trend: float = 0.0, *,
     rank_cv: float = 0.0, years: int = 1, plan: int = 1, z: float = 1.0,
 ) -> tuple[float, float, float]:
-    """返回 (点估计, 下界, 上界)。
-
-    在对数位次维度上把参考位次按 ±z·σ 扰动，复用同一个预测器求概率端点——
-    因此与 sklearn / 解析式兜底都一致，且区间天然落在 [0,1]。
-    """
-    p = predict_prob(student_rank, ref_rank, trend)
-    sigma = _sigma_log_ref(rank_cv, years, plan)
-    ref_lo = max(1, round(ref_rank * math.exp(-z * sigma)))
-    ref_hi = max(1, round(ref_rank * math.exp(z * sigma)))
-    a = predict_prob(student_rank, ref_lo, trend)
-    b = predict_prob(student_rank, ref_hi, trend)
-    return p, min(a, b), max(a, b)
-
-
-def predict_intervals(
-    student_rank: int,
-    candidates: list[tuple[int, float, float, int, int]],
-    z: float = 1.0,
-) -> list[tuple[float, float, float]]:
-    """批量版 predict_interval。
-
-    candidates: 每项 (ref_rank, trend, rank_cv, years, plan)。
-    返回与之一一对应的 (点估计, 下界, 上界)。所有候选的点/上/下三点特征拼成一个
-    矩阵一次预测，避免逐候选调用 sklearn 的高开销。
-    """
-    feats: list[list[float]] = []
-    for ref, trend, rank_cv, years, plan in candidates:
-        sigma = _sigma_log_ref(rank_cv, years, plan)
-        ref_lo = max(1, round(ref * math.exp(-z * sigma)))
-        ref_hi = max(1, round(ref * math.exp(z * sigma)))
-        feats.append(_features(student_rank, ref, trend))
-        feats.append(_features(student_rank, ref_lo, trend))
-        feats.append(_features(student_rank, ref_hi, trend))
-    probs = _predict_many(feats)
-    out: list[tuple[float, float, float]] = []
-    for i in range(0, len(probs), 3):
-        p, a, b = probs[i], probs[i + 1], probs[i + 2]
-        out.append((p, min(a, b), max(a, b)))
-    return out
+    """单候选版（compare 页与测试使用）。"""
+    return predict_intervals(student_rank, [(ref_rank, trend, rank_cv, years, plan)])[0]
 
 
 def confidence_label(low: float, high: float) -> str:

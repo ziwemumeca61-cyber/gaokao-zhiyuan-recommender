@@ -12,8 +12,8 @@ from dataclasses import dataclass
 
 from ..models import AdmissionRecord
 
-# 近年权重：越近的年份权重越高（最多取最近三年）
-_RECENCY_WEIGHTS = [0.5, 0.3, 0.2]
+# 近年权重：越近的年份权重越高（最多取最近四年，年份多则估计更稳、波动更可信）
+_RECENCY_WEIGHTS = [0.4, 0.3, 0.2, 0.1]
 
 
 @dataclass
@@ -40,7 +40,7 @@ def aggregate(
     stats: dict[tuple[str, str], HistoryStat] = {}
     for key, recs in grouped.items():
         recs.sort(key=lambda r: r.year, reverse=True)
-        recent = recs[:3]
+        recent = recs[:4]
         weights = _RECENCY_WEIGHTS[: len(recent)]
         wsum = sum(weights)
         ref_rank = round(sum(r.min_rank * w for r, w in zip(recent, weights)) / wsum)

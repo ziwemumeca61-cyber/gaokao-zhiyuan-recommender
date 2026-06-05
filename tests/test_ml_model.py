@@ -40,6 +40,14 @@ def test_confidence_label_thresholds():
     assert ml_model.confidence_label(0.20, 0.90) == "低"
 
 
-def test_point_estimate_matches_predict_prob():
-    p, _, _ = ml_model.predict_interval(15000, 16000, plan=40)
-    assert p == ml_model.predict_prob(15000, 16000)
+def test_prob_half_when_rank_equals_ref():
+    # 位次正好等于参考线 -> 概率约 50%（正态 CDF 在 0 处）
+    p, _, _ = ml_model.predict_interval(16000, 16000, years=3, plan=40, rank_cv=0.1)
+    assert abs(p - 0.5) < 1e-6
+
+
+def test_prob_monotonic_in_student_rank():
+    # 位次越靠前（数字越小）概率越高
+    better = ml_model.predict_prob(8000, 16000, 0.3)
+    worse = ml_model.predict_prob(30000, 16000, 0.3)
+    assert better > 0.5 > worse

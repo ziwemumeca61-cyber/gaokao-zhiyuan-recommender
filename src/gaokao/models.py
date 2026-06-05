@@ -39,6 +39,7 @@ class Student:
     city_prefs: list[str] = field(default_factory=list)
     major_prefs: list[str] = field(default_factory=list)  # 偏好的专业门类
     level_pref: str | None = None  # 偏好院校层次，如 "985"/"211"/"双一流"/None
+    electives: list[str] = field(default_factory=list)  # 选考科目（3+3 省份选 3 门），用于选科要求过滤
 
     def riasec_vector(self) -> list[float]:
         return [float(self.riasec.get(d, 0.0)) for d in RIASEC_DIMENSIONS]
@@ -71,6 +72,7 @@ class Major:
     riasec_code: str  # 主导兴趣类型，如 "IR"（取前若干主导维度）
     heat: float  # 热度 0~100
     employment_rate: float  # 就业率 0~1
+    subject_req: str = ""  # 选科要求原文，如"物理、化学(2科必选)"/"物/化/生(3选1)"/"不限"
     # 科普字段
     intro: str = ""
     core_courses: list[str] = field(default_factory=list)

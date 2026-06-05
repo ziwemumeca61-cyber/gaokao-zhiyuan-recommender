@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .. import electives
 from ..data_loader import load_admissions, load_majors, load_schools
 from ..models import TIERS, Recommendation, Student
 from . import interest, ml_model, rank_based, scoring
@@ -22,19 +23,22 @@ def recommend(
     stats = aggregate(admissions, student.province, student.subject_type)
     buckets: dict[str, list[Recommendation]] = {t: [] for t in TIERS}
 
-    # 第一遍：筛出冲稳保区间内的候选（概率稍后批量计算）
+    # 第一遍：筛出冲稳保区间内、且满足选科要求的候选（概率稍后批量计算）
     picked: list[tuple] = []  # (tier, school, major, stat)
     for (school_id, major_id), stat in stats.items():
         school = schools.get(school_id)
         major = majors.get(major_id)
         if school is None or major is None:
             continue
+        # 选科要求过滤：考生选考科目不满足则不可报，直接剔除
+        if not electives.satisfies(major.subject_req, student.electives):
+            continue
         tier = rank_based.classify(student.rank, stat.ref_rank)
         if tier is None:
             continue
         picked.append((tier, school, major, stat))
 
-    # 批量计算录取概率区间（一次矩阵预测，远快于逐候选调用 sklearn）
+    # 批量计算录取概率区间（基于历年位次波动的正态校准）
     intervals = ml_model.predict_intervals(
         student.rank,
         [(s.ref_rank, s.trend, s.rank_cv, s.years, s.total_plan)

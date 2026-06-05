@@ -117,6 +117,10 @@ def render_major_detail(major: Major) -> None:
         st.markdown(f"**行业前景** ｜ {d['industry_outlook']}")
     if d["suits"]:
         st.markdown(f"**适合谁** ｜ {d['suits']}")
+    if major.subject_req:
+        from .electives import requirement_label  # noqa: PLC0415
+
+        st.markdown(f"**选科要求** ｜ {requirement_label(major.subject_req)}")
     st.caption(f"学科门类：{major.category}")
 
 
