@@ -24,11 +24,16 @@ def _get_secret(name: str) -> str | None:
     try:
         import streamlit as st  # noqa: PLC0415
 
+        # 1) 用户在界面粘贴的 key（最高优先，便于即填即用）
+        val = st.session_state.get(name)
+        if val:
+            return str(val)
+        # 2) .streamlit/secrets.toml
         if name in st.secrets:
             return str(st.secrets[name])
     except Exception:
         pass
-    return os.environ.get(name)
+    return os.environ.get(name)  # 3) 环境变量
 
 
 def is_configured() -> bool:
