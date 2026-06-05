@@ -112,6 +112,14 @@ def available_provinces(data_dir: str | None = None) -> list[str]:
 
 
 @_cache
+def available_subjects(province: str, data_dir: str | None = None) -> list[str]:
+    """某省份在录取数据中出现的科类（物理/历史/综合）。"""
+    subs = {r.subject_type for r in load_admissions(data_dir) if r.province == province}
+    order = ["物理", "历史", "综合"]
+    return [s for s in order if s in subs] or sorted(subs)
+
+
+@_cache
 def available_categories(data_dir: str | None = None) -> list[str]:
     return sorted({m.category for m in load_majors(data_dir).values()})
 

@@ -32,7 +32,7 @@ CANONICAL_COLUMNS: dict[str, list[str]] = {
 }
 DATASET_FILES = tuple(REQUIRED_COLUMNS.keys())
 
-SUBJECT_TYPES = {"物理", "历史"}
+SUBJECT_TYPES = {"物理", "历史", "综合"}
 SCORE_RANGE = (0, 750)
 
 # 学科门类 -> 默认 RIASEC 主导码（真实专业缺兴趣码时兜底，与生成器口径一致）

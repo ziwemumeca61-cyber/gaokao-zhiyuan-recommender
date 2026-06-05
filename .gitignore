@@ -217,5 +217,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# 真实录取数据（按需本地导入，不入库；缺失时回退到 data/ 的模拟数据）
-data/real/
+# 真实录取数据：默认随仓库提交（当前为山东，逐校专业录取线）。
+# 如需放本地临时数据而不入库，改放 data/real_local/（已忽略）。
+data/real_local/
