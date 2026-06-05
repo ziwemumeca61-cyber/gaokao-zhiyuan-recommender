@@ -7,6 +7,13 @@ rem 优先用随包内嵌的便携 Python；没有则用系统 Python
 set "PY=%~dp0runtime\python.exe"
 if not exist "%PY%" set "PY=python"
 
+rem 跳过 Streamlit 首次运行的"邮箱"引导提示（避免客户双击后卡住）
+if not exist "%USERPROFILE%\.streamlit" mkdir "%USERPROFILE%\.streamlit" >nul 2>nul
+if not exist "%USERPROFILE%\.streamlit\credentials.toml" (
+    > "%USERPROFILE%\.streamlit\credentials.toml" echo [general]
+    >> "%USERPROFILE%\.streamlit\credentials.toml" echo email = ""
+)
+
 echo ============================================
 echo    高考志愿推荐系统  正在启动，请稍候...
 echo    启动后会自动打开浏览器（约 5~10 秒）
