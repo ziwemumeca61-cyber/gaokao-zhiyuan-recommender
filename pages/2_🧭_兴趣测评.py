@@ -17,22 +17,27 @@ from gaokao.ui_helpers import (  # noqa: E402
 )
 
 st.title("🧭 霍兰德兴趣测评")
-st.caption("24 道小题，了解你是哪种'职业兴趣类型'，从'你是什么样的人'找到'适合的专业'。")
+st.caption("15 道情景小题，了解你是哪种'职业兴趣类型'，从'你是什么样的人'找到'适合的专业'。")
 
 if not ensure_data():
     st.stop()
 
-st.markdown("**凭第一感觉选就好，没有对错、别纠结**；拿不准就选「一般」。")
-
-_SCALE = ["很不符合", "不太符合", "一般", "比较符合", "很符合"]  # 索引0~4 → 分值1~5
+st.markdown("**每题二选一**：选「更像你」的那个，凭第一感觉、没有对错。")
 
 with st.form("riasec_form"):
-    answers: dict[int, int] = {}
-    for idx, (text, _dim) in enumerate(assessment.QUESTIONS):
-        choice = st.radio(f"{idx + 1}. {text}", _SCALE, index=2,
-                          horizontal=True, key=f"q{idx}")
-        answers[idx] = _SCALE.index(choice) + 1
+    answers: dict[int, str] = {}
+    for idx, (opt_a, dim_a, opt_b, dim_b) in enumerate(assessment.SCENARIOS):
+        pick = st.radio(f"**{idx + 1}.** 你更倾向于：", [opt_a, opt_b],
+                        index=None, key=f"s{idx}")
+        if pick == opt_a:
+            answers[idx] = dim_a
+        elif pick == opt_b:
+            answers[idx] = dim_b
     submitted = st.form_submit_button("🎯 计算我的兴趣画像", type="primary")
+
+if submitted and len(answers) < len(assessment.SCENARIOS):
+    st.warning(f"还有 {len(assessment.SCENARIOS) - len(answers)} 题没选，"
+               "没选的不计入；选得越全结果越准。")
 
 if submitted:
     riasec = assessment.score(answers)
