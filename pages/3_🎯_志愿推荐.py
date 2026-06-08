@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import streamlit as st  # noqa: E402
 
-from gaokao import report  # noqa: E402
+from gaokao import assessment, report  # noqa: E402
+from gaokao.major_knowledge import heat_for  # noqa: E402
 from gaokao.models import TIERS  # noqa: E402
 from gaokao.recommender import engine  # noqa: E402
 from gaokao.ui_helpers import (  # noqa: E402
@@ -28,8 +30,47 @@ if student is None:
 
 render_scope_banner(student)
 
-per_tier = st.slider("每档推荐数量", 3, 15, 8)
-buckets = engine.recommend(student, per_tier=per_tier)
+c1, c2 = st.columns([2, 1])
+with c1:
+    mode = st.radio("推荐方式", ["🎯 综合推荐", "🧭 按兴趣推荐", "🔥 热门推荐"],
+                    horizontal=True,
+                    help="综合=概率+兴趣+偏好均衡；按兴趣=侧重你测评的兴趣方向；"
+                         "热门=把公认的热门专业往前排")
+with c2:
+    per_tier = st.slider("每档数量", 3, 15, 8)
+
+# 兴趣偏好：用兴趣测评得出的建议门类（没测评则用你填的意向门类）
+interest_cats: list[str] = []
+if student.has_assessment():
+    interest_cats = assessment.suggested_categories(student.riasec)
+elif student.major_prefs:
+    interest_cats = list(student.major_prefs)
+
+if mode == "🧭 按兴趣推荐":
+    if not interest_cats:
+        st.info("想用『按兴趣推荐』更准，建议先做 **🧭 兴趣测评**（或在信息录入选意向门类）。"
+                "暂未测评，下面先按综合方式展示。")
+        buckets = engine.recommend(student, per_tier=per_tier)
+    else:
+        st.caption("📌 已侧重你的兴趣方向：" + "、".join(interest_cats))
+        # 兴趣模式：把建议门类作为偏好，并加大兴趣/门类权重
+        s2 = replace(student, major_prefs=interest_cats)
+        w = {"probability": 0.30, "interest": 0.34, "heat": 0.04,
+             "city": 0.06, "level": 0.06, "category": 0.20}
+        buckets = engine.recommend(s2, per_tier=per_tier, weights=w)
+elif mode == "🔥 热门推荐":
+    st.caption("📌 已把公认的热门专业（计算机/临床/金融等）往前排，仍按你的位次冲稳保。")
+    pool = engine.recommend(student, per_tier=per_tier * 4)
+    buckets = {}
+    for t in TIERS:
+        ranked = sorted(
+            pool[t],
+            key=lambda r: (heat_for(r.major.name, r.major.category), r.composite_score),
+            reverse=True)
+        buckets[t] = ranked[:per_tier]
+else:
+    buckets = engine.recommend(student, per_tier=per_tier)
+
 st.session_state["recommendations"] = buckets
 
 total = sum(len(buckets[t]) for t in TIERS)

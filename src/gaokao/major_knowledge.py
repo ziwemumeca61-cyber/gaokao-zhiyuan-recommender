@@ -135,6 +135,17 @@ def knowledge_for(name: str, category: str) -> dict:
     return CATEGORY_TEMPLATES.get(category, CATEGORY_TEMPLATES["__default__"])
 
 
+def heat_for(name: str, category: str) -> float:
+    """专业热度 0~100：精选专业用真实热度，其余给基准值 50（用于'热门推荐'排序）。"""
+    cur = _curated()
+    if name in cur:
+        return float(cur[name].get("heat", 50))
+    for cname, info in cur.items():
+        if cname in name or name in cname:
+            return float(info.get("heat", 50))
+    return 50.0
+
+
 def detail_for(major: Major) -> dict:
     """合并专业自带字段与知识库兜底，返回用于展示的完整科普字典。"""
     k = knowledge_for(major.name, major.category)
