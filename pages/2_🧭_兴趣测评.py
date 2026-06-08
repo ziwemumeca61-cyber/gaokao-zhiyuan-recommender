@@ -26,9 +26,10 @@ st.markdown("**每题二选一**：选「更像你」的那个，凭第一感觉
 
 with st.form("riasec_form"):
     answers: dict[int, str] = {}
-    for idx, (opt_a, dim_a, opt_b, dim_b) in enumerate(assessment.SCENARIOS):
-        pick = st.radio(f"**{idx + 1}.** 你更倾向于：", [opt_a, opt_b],
-                        index=None, key=f"s{idx}")
+    for idx, (stem, opt_a, dim_a, opt_b, dim_b) in enumerate(assessment.SCENARIOS):
+        st.markdown(f"**{idx + 1}. {stem}**")
+        pick = st.radio("（选更像你的那个）", [opt_a, opt_b], index=None,
+                        key=f"s{idx}", label_visibility="collapsed")
         if pick == opt_a:
             answers[idx] = dim_a
         elif pick == opt_b:
