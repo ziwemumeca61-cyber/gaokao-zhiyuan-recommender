@@ -58,8 +58,8 @@ for (s_id, m_id), stat in stats.items():
     if m is None:
         continue
     p, lo, hi = ml_model.predict_interval(
-        student.rank, stat.ref_rank, stat.trend,
-        rank_cv=stat.rank_cv, years=stat.years, plan=stat.total_plan)
+        student.rank, stat.ref_rank, stat.trend, rank_cv=stat.rank_cv,
+        years=stat.years, plan=stat.total_plan, plan_ratio=stat.plan_ratio)
     tier = rank_based.classify(student.rank, stat.ref_rank) or "—"
     ok = el.satisfies(m.subject_req, student.electives)
     rows.append({

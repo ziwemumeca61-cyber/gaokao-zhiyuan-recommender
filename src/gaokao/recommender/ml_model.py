@@ -39,32 +39,43 @@ def predict_prob(student_rank: int, ref_rank: int, sigma: float = _DEFAULT_SIGMA
     return round(min(0.99, max(0.01, _phi(d / max(sigma, 1e-6)))), 4)
 
 
+def _proj_ref(ref_rank: int, plan_ratio: float) -> int:
+    """按招生计划变化修正参考位次：扩招(plan_ratio>1)→线走低→参考位次变大(更好考)。"""
+    factor = min(1.18, max(0.85, plan_ratio ** 0.4))
+    return max(1, round(ref_rank * factor))
+
+
 def predict_intervals(
     student_rank: int,
-    candidates: list[tuple[int, float, float, int, int]],
+    candidates: list[tuple],
 ) -> list[tuple[float, float, float]]:
     """批量返回 (点估计, 下界, 上界)。
 
-    candidates 每项 (ref_rank, trend, rank_cv, years, plan)。区间反映"参考位次估计"的
-    不确定性：以标准误 se=σ/√years 扰动 ref，得到概率上下界。
+    candidates 每项 (ref_rank, trend, rank_cv, years, plan[, plan_ratio])。区间反映
+    "参考位次估计"的不确定性：以标准误 se=σ/√years 扰动 ref，得到概率上下界。
     """
     out: list[tuple[float, float, float]] = []
-    for ref, trend, rank_cv, years, plan in candidates:
+    for cand in candidates:
+        ref, trend, rank_cv, years, plan = cand[:5]
+        plan_ratio = cand[5] if len(cand) > 5 else 1.0
         sig = _sigma(rank_cv, years, plan, trend)
         se = sig / math.sqrt(max(years, 1))
-        p = predict_prob(student_rank, ref, sig)
-        hi = predict_prob(student_rank, max(1, round(ref * math.exp(se))), sig)
-        lo = predict_prob(student_rank, max(1, round(ref * math.exp(-se))), sig)
+        pref = _proj_ref(ref, plan_ratio)
+        p = predict_prob(student_rank, pref, sig)
+        hi = predict_prob(student_rank, max(1, round(pref * math.exp(se))), sig)
+        lo = predict_prob(student_rank, max(1, round(pref * math.exp(-se))), sig)
         out.append((p, min(lo, hi), max(lo, hi)))
     return out
 
 
 def predict_interval(
     student_rank: int, ref_rank: int, trend: float = 0.0, *,
-    rank_cv: float = 0.0, years: int = 1, plan: int = 1, z: float = 1.0,
+    rank_cv: float = 0.0, years: int = 1, plan: int = 1, plan_ratio: float = 1.0,
+    z: float = 1.0,
 ) -> tuple[float, float, float]:
     """单候选版（compare 页与测试使用）。"""
-    return predict_intervals(student_rank, [(ref_rank, trend, rank_cv, years, plan)])[0]
+    return predict_intervals(
+        student_rank, [(ref_rank, trend, rank_cv, years, plan, plan_ratio)])[0]
 
 
 def confidence_label(low: float, high: float) -> str:

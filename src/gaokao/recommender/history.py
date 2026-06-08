@@ -26,6 +26,7 @@ class HistoryStat:
     total_plan: int      # 近一年招生计划数
     years: int           # 可用年份数
     rank_cv: float       # 近年位次的对数波动（标准差），衡量录取线稳定性
+    plan_ratio: float    # 最新计划 / 近年平均计划（>1 表示扩招，分数线可能走低）
 
 
 def aggregate(
@@ -46,10 +47,13 @@ def aggregate(
         ref_rank = round(sum(r.min_rank * w for r, w in zip(recent, weights)) / wsum)
         ref_score = round(sum(r.min_score * w for r, w in zip(recent, weights)) / wsum)
         trend = _trend(recent)
+        plans = [r.plan_count for r in recent if r.plan_count > 0]
+        avg_plan = sum(plans) / len(plans) if plans else 0
+        plan_ratio = (recent[0].plan_count / avg_plan) if avg_plan > 0 else 1.0
         stats[key] = HistoryStat(
             school_id=key[0], major_id=key[1], ref_rank=ref_rank, ref_score=ref_score,
             trend=trend, total_plan=recent[0].plan_count, years=len(recs),
-            rank_cv=_rank_cv(recent),
+            rank_cv=_rank_cv(recent), plan_ratio=round(plan_ratio, 3),
         )
     return stats
 
