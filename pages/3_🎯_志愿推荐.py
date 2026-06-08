@@ -78,6 +78,23 @@ if total == 0:
     st.warning("没有匹配到合适的志愿，试试调整分数/位次或偏好。")
     st.stop()
 
+# ---------- 筛选（按院校层次 / 学科门类） ----------
+with st.expander("🔎 筛选推荐结果"):
+    _levels = sorted({r.school.level for t in TIERS for r in buckets[t]})
+    _cats = sorted({r.major.category for t in TIERS for r in buckets[t]})
+    fc1, fc2 = st.columns(2)
+    sel_levels = fc1.multiselect("院校层次", _levels)
+    sel_cats = fc2.multiselect("学科门类", _cats)
+if sel_levels or sel_cats:
+    buckets = {
+        t: [r for r in buckets[t]
+            if (not sel_levels or r.school.level in sel_levels)
+            and (not sel_cats or r.major.category in sel_cats)]
+        for t in TIERS}
+    if sum(len(buckets[t]) for t in TIERS) == 0:
+        st.warning("当前筛选条件下没有结果，放宽筛选试试。")
+        st.stop()
+
 # ---------- 一键导出 ----------
 st.markdown("#### 📄 一键导出推荐理由文档")
 md = report.build_markdown_report(student, buckets)

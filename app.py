@@ -64,7 +64,22 @@ def render_home() -> None:
     st.divider()
     if not student:
         st.markdown("#### 👉 现在开始")
-        st.page_link(info_page, label="第一步：填写我的高考信息", icon="📝")
+        cols = st.columns(2)
+        with cols[0]:
+            st.page_link(info_page, label="第一步：填写我的高考信息", icon="📝")
+        with cols[1]:
+            if st.button("🎲 没空填？用示例考生一键体验", use_container_width=True):
+                from gaokao.data_loader import available_provinces, available_subjects  # noqa: PLC0415
+                from gaokao.models import Student  # noqa: PLC0415
+                from gaokao.ui_helpers import set_student  # noqa: PLC0415
+
+                prov = available_provinces()[0]
+                subs = available_subjects(prov) or ["物理"]
+                sub = subs[0]
+                set_student(Student(
+                    score=573, rank=50000, province=prov, subject_type=sub,
+                    electives=["物理", "化学", "生物"] if sub == "综合" else []))
+                st.switch_page(recommend_page)
     elif not st.session_state.get("recommendations"):
         st.markdown(f"#### 👋 {student.province}·{student.subject_type} · {student.score} 分 考生，欢迎回来")
         st.page_link(recommend_page, label="下一步：查看我的冲稳保推荐", icon="🎯")
