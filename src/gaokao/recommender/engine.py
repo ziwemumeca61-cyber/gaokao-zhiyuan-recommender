@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .. import electives
 from ..data_loader import load_admissions, load_majors, load_schools
 from ..models import TIERS, Recommendation, Student
 from . import interest, ml_model, rank_based, scoring
@@ -22,22 +23,25 @@ def recommend(
     stats = aggregate(admissions, student.province, student.subject_type)
     buckets: dict[str, list[Recommendation]] = {t: [] for t in TIERS}
 
-    # 第一遍：筛出冲稳保区间内的候选（概率稍后批量计算）
+    # 第一遍：筛出冲稳保区间内、且满足选科要求的候选（概率稍后批量计算）
     picked: list[tuple] = []  # (tier, school, major, stat)
     for (school_id, major_id), stat in stats.items():
         school = schools.get(school_id)
         major = majors.get(major_id)
         if school is None or major is None:
             continue
+        # 选科要求过滤：考生选考科目不满足则不可报，直接剔除
+        if not electives.satisfies(major.subject_req, student.electives):
+            continue
         tier = rank_based.classify(student.rank, stat.ref_rank)
         if tier is None:
             continue
         picked.append((tier, school, major, stat))
 
-    # 批量计算录取概率区间（一次矩阵预测，远快于逐候选调用 sklearn）
+    # 批量计算录取概率区间（基于历年位次波动的正态校准 + 招生计划变化修正）
     intervals = ml_model.predict_intervals(
         student.rank,
-        [(s.ref_rank, s.trend, s.rank_cv, s.years, s.total_plan)
+        [(s.ref_rank, s.trend, s.rank_cv, s.years, s.total_plan, s.plan_ratio)
          for (_, _, _, s) in picked])
 
     for (tier, school, major, stat), (probability, prob_low, prob_high) in zip(
@@ -82,10 +86,14 @@ def _build_reasons(student, school, major, stat, tier, probability,
             reasons.append(f"与你的兴趣高度契合（匹配度 {interest_match:.2f}）")
         elif interest_match >= 0.4:
             reasons.append(f"与你的兴趣较为契合（匹配度 {interest_match:.2f}）")
-    if major.employment_rate >= 0.88:
-        reasons.append(f"就业率较高（{major.employment_rate * 100:.0f}%）")
     if student.level_pref and school.level == student.level_pref:
         reasons.append(f"符合你偏好的院校层次（{school.level}）")
-    if stat.trend > 0.06:
-        reasons.append("近年报考热度上升，注意竞争加剧")
+    if stat.rank_cv >= 0.25:
+        reasons.append("近年录取位次波动较大（疑似大小年），录取概率不确定性偏高")
+    elif stat.trend > 0.10:
+        reasons.append("近年录取位次走高、竞争加剧，注意风险")
+    if stat.plan_ratio >= 1.2:
+        reasons.append(f"今年招生计划较往年增加（约 {stat.plan_ratio:.1f} 倍），分数线可能走低")
+    elif stat.plan_ratio <= 0.8:
+        reasons.append("今年招生计划较往年减少，分数线可能走高，需谨慎")
     return reasons

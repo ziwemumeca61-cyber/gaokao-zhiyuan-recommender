@@ -16,7 +16,6 @@ from gaokao.ui_helpers import (  # noqa: E402
     ensure_data, get_student, render_major_detail, school_caption, wishlist_button,
 )
 
-st.set_page_config(page_title="专业百科", page_icon="📚", layout="wide")
 st.title("📚 专业百科")
 st.caption("不知道专业是干嘛的？这里把每个专业讲明白：学什么课、将来干什么、适合什么样的人。")
 
@@ -38,8 +37,7 @@ with tab_hot:
     cat_arg = None if cat == "全部" else cat
     trends = trending.rank_hot_majors(majors, category=cat_arg, top_n=top_n)
     for i, t in enumerate(trends, start=1):
-        with st.expander(f"{i}. {t.name}　`{t.category}`　🔥{t.score:.0f}"
-                         f"　就业 {t.avg_employment * 100:.0f}%　{t.count} 校开设"):
+        with st.expander(f"{i}. {t.name}　`{t.category}`　{t.count} 所院校开设"):
             render_major_detail(t.sample)
             wishlist_button(t.sample, key=f"wish_hot_{t.sample.id}")
 
@@ -86,10 +84,10 @@ with tab_browse:
         items = [m for m in items if kw.strip() in m.name]
     if bcat != "全部":
         items = [m for m in items if m.category == bcat]
-    items.sort(key=lambda m: m.heat, reverse=True)
+    items.sort(key=lambda m: m.name)
 
     st.caption(f"共 {len(items)} 个专业")
     for m in items[:60]:
-        with st.expander(f"{m.name}　`{m.category}`　🔥{m.heat:.0f}"):
+        with st.expander(f"{m.name}　`{m.category}`"):
             render_major_detail(m)
             wishlist_button(m, key=f"wish_browse_{m.id}")

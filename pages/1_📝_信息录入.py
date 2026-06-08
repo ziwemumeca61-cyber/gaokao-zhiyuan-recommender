@@ -12,10 +12,10 @@ import streamlit as st  # noqa: E402
 from gaokao.data_loader import (  # noqa: E402
     available_categories, available_cities, available_provinces, available_subjects,
 )
+from gaokao.electives import ELECTIVE_SUBJECTS  # noqa: E402
 from gaokao.models import Student  # noqa: E402
 from gaokao.ui_helpers import ensure_data, get_student  # noqa: E402
 
-st.set_page_config(page_title="信息录入", page_icon="📝", layout="wide")
 st.title("📝 信息录入")
 st.caption("填写你的高考信息与偏好，系统据此为你量身推荐。带 * 为必填。")
 
@@ -35,19 +35,29 @@ province = st.selectbox(
     help="即你高考报名的省份。高考按省份分别划线录取，"
          "所有分数线/位次都基于此省，跨省不可直接比较。")
 subjects = available_subjects(province) or ["物理", "历史"]
+# 科类放表单外：切换即刷新（综合=3+3 才需要填选考科目）
+subject_type = st.radio(
+    "选科科类 *", subjects,
+    index=subjects.index(existing.subject_type) if (
+        existing and existing.subject_type in subjects) else 0,
+    horizontal=True)
+
+electives: list[str] = existing.electives if existing else []
+if subject_type == "综合":
+    electives = st.multiselect(
+        "选考科目 *（3+3 省份请选 3 门，用于过滤你不能报的专业）",
+        list(ELECTIVE_SUBJECTS), default=[e for e in electives if e in ELECTIVE_SUBJECTS],
+        max_selections=3)
+    if len(electives) != 3:
+        st.caption("⚠️ 请选满 3 门；不选则不按选科要求过滤，可能推到你报不了的专业。")
 
 with st.form("student_form"):
     c1, c2 = st.columns(2)
     with c1:
-        score = st.number_input("高考分数 *", min_value=200, max_value=750,
+        score = st.number_input("高考分数 *", min_value=200, max_value=900,
                                 value=int(existing.score) if existing else 600)
-        subject_type = st.radio(
-            "选科科类 *", subjects,
-            index=subjects.index(existing.subject_type) if (
-                existing and existing.subject_type in subjects) else 0,
-            horizontal=True)
     with c2:
-        rank = st.number_input("全省位次 *", min_value=1, max_value=500000,
+        rank = st.number_input("全省位次 *", min_value=1, max_value=900000,
                                value=int(existing.rank) if existing else 15000,
                                help="位次比分数更稳定，是志愿推荐的核心依据")
 
@@ -72,7 +82,7 @@ st.page_link("pages/10_🔢_一分一段.py",
 if submitted:
     student = Student(
         score=float(score), rank=int(rank), province=province,
-        subject_type=subject_type,
+        subject_type=subject_type, electives=list(electives),
         city_prefs=city_prefs, major_prefs=major_prefs,
         level_pref=None if level_pref == "不限" else level_pref,
     )

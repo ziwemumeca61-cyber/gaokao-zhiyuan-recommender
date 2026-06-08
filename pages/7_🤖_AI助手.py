@@ -14,17 +14,30 @@ from gaokao.data_loader import load_majors  # noqa: E402
 from gaokao.models import TIERS  # noqa: E402
 from gaokao.ui_helpers import ensure_data, get_student, get_wishlist  # noqa: E402
 
-st.set_page_config(page_title="AI 助手", page_icon="🤖", layout="centered")
 st.title("🤖 AI 志愿小助手")
 st.caption("由 DeepSeek 提供。可以问：『计算机和软件工程有啥区别？』『金融适合我吗？』")
 
 if not ensure_data():
     st.stop()
 
+# ---------- DeepSeek API Key 配置（界面直接粘贴即可用） ----------
+_configured = llm.is_configured()
+with st.expander(
+        "🔑 配置 DeepSeek API Key" + ("（已配置 ✅）" if _configured else "（必填，点这里展开）"),
+        expanded=not _configured):
+    st.caption("没有 key？去 platform.deepseek.com 注册并创建（按量付费，充几块钱即可）。"
+               "粘贴的 key 只保存在你本次会话、不会上传或入库。")
+    key = st.text_input("粘贴你的 DeepSeek API Key（sk- 开头）", type="password",
+                        value=st.session_state.get("DEEPSEEK_API_KEY", ""),
+                        placeholder="sk-...")
+    if key.strip():
+        st.session_state["DEEPSEEK_API_KEY"] = key.strip()
+    if st.session_state.get("DEEPSEEK_API_KEY"):
+        st.success("已填入，可以开始提问了。（想永久生效可写入 .streamlit/secrets.toml）")
+
 if not llm.is_configured():
-    st.warning("尚未配置 DeepSeek API Key，AI 助手暂不可用（其余功能正常）。\n\n"
-               "请复制 `.streamlit/secrets.toml.example` 为 `.streamlit/secrets.toml`，"
-               "填入 `DEEPSEEK_API_KEY` 后刷新页面。")
+    st.info("👆 填入 DeepSeek API Key 后即可使用 AI 助手；其余功能不受影响。")
+    st.stop()
 
 
 def _build_context() -> str:

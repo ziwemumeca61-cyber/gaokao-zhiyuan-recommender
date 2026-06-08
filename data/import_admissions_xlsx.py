@@ -127,7 +127,7 @@ def convert(prov: str, src: Path) -> dict[str, list[dict]]:
             majors[mid] = {
                 "id": mid, "name": major, "category": cat, "school_id": code,
                 "riasec_code": CATEGORY_RIASEC.get(cat, DEFAULT_RIASEC),
-                "heat": 50.0, "employment_rate": 0.85,
+                "heat": 50.0, "employment_rate": 0.85, "subject_req": sel,
                 "intro": "", "core_courses": "", "career_paths": "",
                 "industry_outlook": "", "suits": "",
             }
@@ -163,8 +163,8 @@ def main(argv: list[str]) -> int:
            ["id", "name", "province", "city", "level", "type", "tags"])
     _write(out / "majors.csv", data["majors"],
            ["id", "name", "category", "school_id", "riasec_code", "heat",
-            "employment_rate", "intro", "core_courses", "career_paths",
-            "industry_outlook", "suits"])
+            "employment_rate", "subject_req", "intro", "core_courses",
+            "career_paths", "industry_outlook", "suits"])
     _write(out / "admission_scores.csv", data["admissions"],
            ["school_id", "major_id", "year", "province", "subject_type",
             "min_score", "min_rank", "plan_count"])

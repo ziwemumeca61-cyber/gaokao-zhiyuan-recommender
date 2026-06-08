@@ -77,6 +77,7 @@ def load_majors(data_dir: str | None = None) -> dict[str, Major]:
             id=r["id"], name=r["name"], category=r["category"],
             school_id=r["school_id"], riasec_code=r["riasec_code"],
             heat=float(r["heat"]), employment_rate=float(r["employment_rate"]),
+            subject_req=r.get("subject_req", ""),
             intro=r.get("intro", ""),
             core_courses=[c for c in r.get("core_courses", "").split("|") if c],
             career_paths=[c for c in r.get("career_paths", "").split("|") if c],

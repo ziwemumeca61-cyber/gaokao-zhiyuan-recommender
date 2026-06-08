@@ -24,7 +24,7 @@ CANONICAL_COLUMNS: dict[str, list[str]] = {
     "schools.csv": ["id", "name", "province", "city", "level", "type", "tags"],
     "majors.csv": [
         "id", "name", "category", "school_id", "riasec_code", "heat",
-        "employment_rate", "intro", "core_courses", "career_paths",
+        "employment_rate", "subject_req", "intro", "core_courses", "career_paths",
         "industry_outlook", "suits"],
     "admission_scores.csv": [
         "school_id", "major_id", "year", "province", "subject_type",

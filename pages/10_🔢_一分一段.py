@@ -15,7 +15,6 @@ from gaokao.data_loader import available_provinces  # noqa: E402
 from gaokao.models import RIASEC_DIMENSIONS, Student  # noqa: E402
 from gaokao.ui_helpers import ensure_data, get_student, set_student  # noqa: E402
 
-st.set_page_config(page_title="一分一段", page_icon="🔢", layout="wide")
 st.title("🔢 一分一段换算")
 st.caption("分数和位次是一回事的两种说法。高考按省划线，换算只在同省同科类内有意义。")
 
@@ -68,30 +67,31 @@ def _note(conv) -> None:
         st.caption("⚠️ 超出实测分数段，结果为按趋势外推的**估算值**，仅供参考。")
 
 
-# ---------- 双向换算 ----------
-left, right = st.columns(2)
-with left:
-    st.markdown("#### 分数 → 位次")
-    _smax = 900 if table.score_max > 750 else 750
-    _sdefault = min(max(int(student.score) if student else 600, 200), _smax)
-    score_in = st.number_input("输入高考分数", min_value=0, max_value=_smax,
-                               value=_sdefault, step=1)
-    conv_r = table.rank_for_score(score_in)
-    st.metric("对应全省位次", f"{conv_r.value:,}")
-    _note(conv_r)
-with right:
-    st.markdown("#### 位次 → 分数")
-    rank_in = st.number_input("输入全省位次", min_value=1, max_value=500000,
-                              value=int(student.rank) if student else 15000, step=1)
-    conv_s = table.score_for_rank(rank_in)
-    st.metric("对应高考分数", f"{conv_s.value} 分")
-    _note(conv_s)
+# ---------- 换算（单一输入，避免两个方向自相矛盾） ----------
+_smax = 900 if table.score_max > 750 else 750
+mode = st.radio("你手上有哪个？", ["📊 我知道分数", "🔢 我知道位次"], horizontal=True)
+if mode == "📊 我知道分数":
+    _sdefault = min(max(int(student.score) if student else 600, 0), _smax)
+    score_val = st.number_input("输入高考分数", min_value=0, max_value=_smax,
+                                value=_sdefault, step=1)
+    conv = table.rank_for_score(score_val)
+    rank_val = conv.value
+    st.metric(f"{int(score_val)} 分　→　对应全省位次", f"{rank_val:,}")
+else:
+    _rdefault = min(max(int(student.rank) if student else 15000, 1), 900000)
+    rank_val = st.number_input("输入全省位次", min_value=1, max_value=900000,
+                               value=_rdefault, step=1)
+    conv = table.score_for_rank(rank_val)
+    score_val = conv.value
+    st.metric(f"位次 {int(rank_val):,}　→　对应高考分数", f"{score_val} 分")
+    st.caption("注：一个分数对应一段位次区间，把这个分数再换回位次可能差几名，属正常。")
+_note(conv)
+score_val, rank_val = int(score_val), int(rank_val)
 
 # ---------- 应用到我的信息 ----------
 st.divider()
 st.markdown("#### 一键写入我的信息")
-st.caption("选一个口径写入考生画像，志愿推荐会据此计算。")
-a1, a2 = st.columns(2)
+st.caption("把上面这组分数+位次写入考生画像，志愿推荐会据此计算。")
 
 
 def _apply(score: int, rank: int) -> None:
@@ -109,16 +109,9 @@ def _apply(score: int, rank: int) -> None:
     set_student(new)
 
 
-with a1:
-    if st.button(f"用「分数 {int(score_in)} → 位次 {conv_r.value:,}」",
-                 use_container_width=True):
-        _apply(int(score_in), conv_r.value)
-        st.success(f"已写入：{province}·{subject}，分数 {int(score_in)}，位次 {conv_r.value}。")
-with a2:
-    if st.button(f"用「位次 {int(rank_in):,} → 分数 {conv_s.value}」",
-                 use_container_width=True):
-        _apply(conv_s.value, int(rank_in))
-        st.success(f"已写入：{province}·{subject}，分数 {conv_s.value}，位次 {int(rank_in)}。")
+if st.button(f"✅ 写入：分数 {score_val} ｜ 位次 {rank_val:,}", type="primary"):
+    _apply(score_val, rank_val)
+    st.success(f"已写入：{province}·{subject}，分数 {score_val}，位次 {rank_val:,}。")
 
 # ---------- 曲线 ----------
 st.divider()
@@ -127,8 +120,8 @@ pts = table.points()
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=[s for s, _ in pts], y=[r for _, r in pts],
                          mode="lines", name="一分一段", line_color="#FF5A5F"))
-fig.add_trace(go.Scatter(x=[score_in], y=[conv_r.value], mode="markers",
-                         name="你查询的分数", marker=dict(size=12, color="#00A699")))
+fig.add_trace(go.Scatter(x=[score_val], y=[rank_val], mode="markers",
+                         name="你的位置", marker=dict(size=12, color="#00A699")))
 fig.update_yaxes(autorange="reversed", title="全省位次（越小越好）")
 fig.update_xaxes(title="高考分数")
 fig.update_layout(height=420, legend=dict(orientation="h", y=-0.2))

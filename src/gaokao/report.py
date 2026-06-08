@@ -21,6 +21,15 @@ def _scope_note(student: Student) -> str:
             "（高考按省份分别划线录取，跨省分数/位次不可直接比较）")
 
 
+def _intro(major: Major) -> str:
+    """专业简介：自带为空时用知识库兜底。"""
+    if major.intro:
+        return major.intro
+    from .major_knowledge import knowledge_for  # noqa: PLC0415
+
+    return knowledge_for(major.name, major.category)["intro"]
+
+
 # ---------------------------------------------------------------------------
 # 考生画像（多种格式共用的文本片段）
 # ---------------------------------------------------------------------------
@@ -91,8 +100,7 @@ def build_markdown_report(
                 f"录取概率 {rec.probability * 100:.0f}%"
                 f"（{rec.prob_low * 100:.0f}–{rec.prob_high * 100:.0f}%，把握度{rec.confidence}）"
                 f"　综合分 {rec.composite_score:.2f}")
-            if rec.major.intro:
-                lines.append(f"- 专业简介：{rec.major.intro}")
+            lines.append(f"- 专业简介：{_intro(rec.major)}")
             if rec.reasons:
                 lines.append(f"- 推荐理由：{'；'.join(rec.reasons)}")
     lines.append("")
@@ -130,11 +138,8 @@ def build_markdown_wishlist(
         sname = school.name if school else "未知院校"
         lines.append("")
         lines.append(f"**{i}. {sname} · {major.name}**{loc}")
-        lines.append(
-            f"- 学科门类 {major.category}　就业率 {major.employment_rate * 100:.0f}%"
-            f"　热度 {major.heat:.0f}")
-        if major.intro:
-            lines.append(f"- 专业简介：{major.intro}")
+        lines.append(f"- 学科门类 {major.category}")
+        lines.append(f"- 专业简介：{_intro(major)}")
     lines.append("")
     return "\n".join(lines)
 
@@ -173,8 +178,7 @@ def build_docx_report(student: Student, buckets: dict[str, list[Recommendation]]
                 f"{rec.school.level}/{rec.school.city}　参考位次 {rec.ref_rank}　"
                 f"录取概率 {rec.probability * 100:.0f}%"
                 f"（{rec.prob_low * 100:.0f}–{rec.prob_high * 100:.0f}%，把握度{rec.confidence}）")
-            if rec.major.intro:
-                doc.add_paragraph(f"专业简介：{rec.major.intro}")
+            doc.add_paragraph(f"专业简介：{_intro(rec.major)}")
             if rec.reasons:
                 doc.add_paragraph("推荐理由：" + "；".join(rec.reasons))
 
@@ -201,11 +205,8 @@ def build_docx_wishlist(
         sname = school.name if school else "未知院校"
         loc = f"（{school.level}/{school.city}）" if school else ""
         doc.add_heading(f"{i}. {sname} · {major.name}", level=2)
-        doc.add_paragraph(
-            f"{loc}学科门类 {major.category}　"
-            f"就业率 {major.employment_rate * 100:.0f}%　热度 {major.heat:.0f}")
-        if major.intro:
-            doc.add_paragraph(f"专业简介：{major.intro}")
+        doc.add_paragraph(f"{loc}学科门类 {major.category}")
+        doc.add_paragraph(f"专业简介：{_intro(major)}")
 
     return _docx_bytes(doc)
 
@@ -279,11 +280,8 @@ def build_pdf_wishlist(
         sname = school.name if school else "未知院校"
         loc = f"（{school.level}/{school.city}）" if school else ""
         blocks.append((f"{i}. {sname} · {major.name}{loc}", "h3"))
-        blocks.append((
-            f"学科门类 {major.category}　就业率 {major.employment_rate * 100:.0f}%"
-            f"　热度 {major.heat:.0f}", "body"))
-        if major.intro:
-            blocks.append(("专业简介：" + major.intro, "body"))
+        blocks.append((f"学科门类 {major.category}", "body"))
+        blocks.append(("专业简介：" + _intro(major), "body"))
     return _pdf_bytes(blocks)
 
 

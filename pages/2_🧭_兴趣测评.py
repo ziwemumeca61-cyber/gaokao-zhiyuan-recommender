@@ -16,20 +16,29 @@ from gaokao.ui_helpers import (  # noqa: E402
     wishlist_button,
 )
 
-st.set_page_config(page_title="兴趣测评", page_icon="🧭", layout="wide")
 st.title("🧭 霍兰德兴趣测评")
-st.caption("24 道小题，了解你是哪种'职业兴趣类型'，从'你是什么样的人'找到'适合的专业'。")
+st.caption("15 道情景小题，了解你是哪种'职业兴趣类型'，从'你是什么样的人'找到'适合的专业'。")
 
 if not ensure_data():
     st.stop()
 
-st.markdown("请根据自己的真实想法，对每句话的认同程度打分（1=很不符合，5=很符合）。")
+st.markdown("**每题二选一**：选「更像你」的那个，凭第一感觉、没有对错。")
 
 with st.form("riasec_form"):
-    answers: dict[int, int] = {}
-    for idx, (text, _dim) in enumerate(assessment.QUESTIONS):
-        answers[idx] = st.slider(f"{idx + 1}. {text}", 1, 5, 3, key=f"q{idx}")
+    answers: dict[int, str] = {}
+    for idx, (stem, opt_a, dim_a, opt_b, dim_b) in enumerate(assessment.SCENARIOS):
+        st.markdown(f"**{idx + 1}. {stem}**")
+        pick = st.radio("（选更像你的那个）", [opt_a, opt_b], index=None,
+                        key=f"s{idx}", label_visibility="collapsed")
+        if pick == opt_a:
+            answers[idx] = dim_a
+        elif pick == opt_b:
+            answers[idx] = dim_b
     submitted = st.form_submit_button("🎯 计算我的兴趣画像", type="primary")
+
+if submitted and len(answers) < len(assessment.SCENARIOS):
+    st.warning(f"还有 {len(assessment.SCENARIOS) - len(answers)} 题没选，"
+               "没选的不计入；选得越全结果越准。")
 
 if submitted:
     riasec = assessment.score(answers)
@@ -58,10 +67,9 @@ if riasec:
     shown: set[str] = set()
     for cat in assessment.suggested_categories(riasec):
         cat_majors = [m for m in majors if m.category == cat and m.name not in shown]
-        # 每个门类挑热度最高的几个去重展示
-        cat_majors.sort(key=lambda m: m.heat, reverse=True)
+        cat_majors.sort(key=lambda m: m.name)
         for m in cat_majors[:3]:
             shown.add(m.name)
-            with st.expander(f"{m.name}　`{cat}`　🔥{m.heat:.0f}"):
+            with st.expander(f"{m.name}　`{cat}`"):
                 render_major_detail(m)
                 wishlist_button(m, key=f"wish_assess_{m.id}")

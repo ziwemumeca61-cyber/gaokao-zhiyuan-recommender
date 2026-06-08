@@ -108,6 +108,7 @@ def _normalize_majors(rows: list[dict]) -> tuple[list[dict], int]:
             "riasec_code": r.get("riasec_code") or CATEGORY_RIASEC.get(category, DEFAULT_RIASEC),
             "heat": _num(r.get("heat"), float, 50.0),
             "employment_rate": _num(r.get("employment_rate"), float, 0.85),
+            "subject_req": r.get("subject_req", ""),
             "intro": r.get("intro", ""), "core_courses": r.get("core_courses", ""),
             "career_paths": r.get("career_paths", ""),
             "industry_outlook": r.get("industry_outlook", ""),

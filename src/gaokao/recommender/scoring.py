@@ -1,4 +1,4 @@
-"""多维综合加权评分：把录取概率、兴趣匹配、城市/层次/门类偏好、专业热度、就业率
+"""多维综合加权评分：把录取概率、兴趣匹配、城市/层次/门类偏好、专业热度
 归一化后加权求和，得到用于组内排序的 composite_score（0~1）。权重可配置。
 """
 
@@ -6,11 +6,10 @@ from __future__ import annotations
 
 from ..models import Major, School, Student
 
-# 默认权重（和为 1）
+# 默认权重（和为 1）。注：真实数据缺就业率，故不纳入综合分。
 DEFAULT_WEIGHTS: dict[str, float] = {
-    "probability": 0.28,
-    "interest": 0.24,
-    "employment": 0.14,
+    "probability": 0.40,
+    "interest": 0.26,
     "heat": 0.10,
     "city": 0.10,
     "level": 0.08,
@@ -50,7 +49,6 @@ def composite(
     parts = {
         "probability": probability,
         "interest": interest_match,
-        "employment": major.employment_rate,
         "heat": major.heat / 100.0,
         "city": _city_score(student, school),
         "level": _level_score(student, school),
