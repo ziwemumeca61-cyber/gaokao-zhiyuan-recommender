@@ -14,7 +14,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 import streamlit as st  # noqa: E402
 
-st.set_page_config(page_title="高考志愿小助手", page_icon="🎓", layout="wide")
+from gaokao import branding  # noqa: E402
+
+st.set_page_config(page_title=branding.get("app_title"),
+                   page_icon=branding.get("app_icon"), layout="wide")
 
 
 def render_home() -> None:
@@ -24,8 +27,10 @@ def render_home() -> None:
     )
     from gaokao.ui_helpers import ensure_data, get_student  # noqa: PLC0415
 
-    st.title("🎓 高考志愿小助手")
-    st.subheader("分数不浪费，专业不踩坑，志愿填得明明白白 ✨")
+    st.title(f"{branding.get('app_icon')} {branding.get('app_title')}")
+    st.subheader(branding.get("subtitle"))
+    if branding.get("org_name"):
+        st.caption(f"由 {branding.get('org_name')} 提供")
 
     if not ensure_data():
         st.stop()
@@ -99,7 +104,7 @@ def render_home() -> None:
     with t[3]:
         st.page_link(dashboard_page, label="志愿体检", icon="📋")
 
-    st.caption("⚠️ 结果仅供参考，正式填报请以各省考试院与院校招生章程为准。")
+    st.caption("⚠️ " + branding.get("disclaimer"))
 
 
 # ---- 页面注册（供导航与首页按钮引用） ----
