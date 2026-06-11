@@ -30,6 +30,13 @@ def _intro(major: Major) -> str:
     return knowledge_for(major.name, major.category)["intro"]
 
 
+def _advice(major: Major) -> dict[str, str]:
+    """专业选报建议（选专业提示/实在话/适合谁）。"""
+    from .major_advice import advice_for  # noqa: PLC0415
+
+    return advice_for(major.name, major.category)
+
+
 # ---------------------------------------------------------------------------
 # 考生画像（多种格式共用的文本片段）
 # ---------------------------------------------------------------------------
@@ -140,7 +147,12 @@ def build_markdown_wishlist(
         lines.append(f"**{i}. {sname} · {major.name}**{loc}")
         lines.append(f"- 学科门类 {major.category}")
         lines.append(f"- 专业简介：{_intro(major)}")
+        _a = _advice(major)
+        lines.append(f"- ⚠️ 选专业提示：{_a['pitfall']}")
+        lines.append(f"- 💬 实在话：{_a['truth']}")
+        lines.append(f"- 👪 适合谁：{_a['fit']}")
     lines.append("")
+    lines.append("> 注：以上专业点评为行业普遍看法，仅供参考。")
     return "\n".join(lines)
 
 
@@ -207,7 +219,12 @@ def build_docx_wishlist(
         doc.add_heading(f"{i}. {sname} · {major.name}", level=2)
         doc.add_paragraph(f"{loc}学科门类 {major.category}")
         doc.add_paragraph(f"专业简介：{_intro(major)}")
+        _a = _advice(major)
+        doc.add_paragraph(f"⚠️ 选专业提示：{_a['pitfall']}")
+        doc.add_paragraph(f"💬 实在话：{_a['truth']}")
+        doc.add_paragraph(f"👪 适合谁：{_a['fit']}")
 
+    doc.add_paragraph("注：以上专业点评为行业普遍看法，仅供参考。")
     return _docx_bytes(doc)
 
 
@@ -282,6 +299,11 @@ def build_pdf_wishlist(
         blocks.append((f"{i}. {sname} · {major.name}{loc}", "h3"))
         blocks.append((f"学科门类 {major.category}", "body"))
         blocks.append(("专业简介：" + _intro(major), "body"))
+        _a = _advice(major)
+        blocks.append(("选专业提示：" + _a["pitfall"], "body"))
+        blocks.append(("实在话：" + _a["truth"], "body"))
+        blocks.append(("适合谁：" + _a["fit"], "body"))
+    blocks.append(("注：以上专业点评为行业普遍看法，仅供参考。", "caption"))
     return _pdf_bytes(blocks)
 
 
