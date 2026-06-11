@@ -40,6 +40,9 @@ class Student:
     major_prefs: list[str] = field(default_factory=list)  # 偏好的专业门类
     level_pref: str | None = None  # 偏好院校层次，如 "985"/"211"/"双一流"/None
     electives: list[str] = field(default_factory=list)  # 选考科目（3+3 省份选 3 门），用于选科要求过滤
+    family_economy: str = ""        # 家庭经济："" 未填 / "一般" / "宽裕"
+    accept_postgrad: bool = True    # 是否接受读研深造
+    career_intent: str = ""         # 发展意向："" 未填 / "考公考编" / "进企业"
 
     def riasec_vector(self) -> list[float]:
         return [float(self.riasec.get(d, 0.0)) for d in RIASEC_DIMENSIONS]

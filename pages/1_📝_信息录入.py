@@ -74,6 +74,26 @@ with st.form("student_form"):
         major_prefs = st.multiselect("意向专业门类", categories,
                                      default=existing.major_prefs if existing else [])
 
+    st.markdown("**家庭与发展意向（可选，让避坑提示更懂你）**")
+    f1, f2, f3 = st.columns(3)
+    _econ_opts = ["不便透露", "一般", "宽裕"]
+    with f1:
+        family_economy = st.selectbox(
+            "家庭经济", _econ_opts,
+            index=_econ_opts.index(existing.family_economy) if (
+                existing and existing.family_economy in _econ_opts) else 0)
+    with f2:
+        accept_postgrad = st.radio(
+            "是否接受读研深造", ["接受", "暂不打算"],
+            index=0 if (not existing or existing.accept_postgrad) else 1,
+            horizontal=True)
+    with f3:
+        _intent_opts = ["还没想好", "考公考编", "进企业"]
+        career_intent = st.selectbox(
+            "毕业去向倾向", _intent_opts,
+            index=_intent_opts.index(existing.career_intent) if (
+                existing and existing.career_intent in _intent_opts) else 0)
+
     submitted = st.form_submit_button("💾 保存并生成画像", type="primary")
 
 st.page_link("pages/10_🔢_一分一段.py",
@@ -85,6 +105,9 @@ if submitted:
         subject_type=subject_type, electives=list(electives),
         city_prefs=city_prefs, major_prefs=major_prefs,
         level_pref=None if level_pref == "不限" else level_pref,
+        family_economy="" if family_economy == "不便透露" else family_economy,
+        accept_postgrad=(accept_postgrad == "接受"),
+        career_intent="" if career_intent == "还没想好" else career_intent,
     )
     # 保留既有兴趣测评结果
     if existing and existing.has_assessment():

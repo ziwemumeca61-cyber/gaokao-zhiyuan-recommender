@@ -121,7 +121,22 @@ def render_major_detail(major: Major) -> None:
         from .electives import requirement_label  # noqa: PLC0415
 
         st.markdown(f"**选科要求** ｜ {requirement_label(major.subject_req)}")
-    st.caption(f"学科门类：{major.category}")
+
+    # 中肯的选报建议 + 结合家庭情况的提醒
+    from .major_advice import advice_for, family_notes  # noqa: PLC0415
+
+    adv = advice_for(major.name, major.category)
+    st.markdown(f"**⚠️ 选专业提示** ｜ {adv['pitfall']}")
+    st.markdown(f"**💬 实在话** ｜ {adv['truth']}")
+    st.markdown(f"**👪 适合谁** ｜ {adv['fit']}")
+    stu = get_student()
+    if stu is not None:
+        for note in family_notes(major.name, major.category,
+                                 family_economy=stu.family_economy,
+                                 accept_postgrad=stu.accept_postgrad,
+                                 career_intent=stu.career_intent):
+            st.markdown(f"**🎯 给你的提醒** ｜ {note}")
+    st.caption(f"学科门类：{major.category}　|　以上为行业普遍看法，仅供参考")
 
 
 def wishlist_button(major: Major, key: str) -> None:
