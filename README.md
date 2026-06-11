@@ -43,4 +43,6 @@ pytest -q
 
 ## License
 
-MIT
+This project is licensed under AGPL-3.0.
+
+For commercial licensing inquiries, please contact the author.
