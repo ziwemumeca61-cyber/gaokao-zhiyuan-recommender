@@ -3,6 +3,9 @@ chcp 65001 >nul
 title 高考志愿推荐系统
 cd /d "%~dp0"
 
+rem 兼容两种放置方式：打包版 app.py 与本脚本同级；源码版本脚本在 packaging\ 内，app.py 在上一级
+if not exist "app.py" if exist "..\app.py" cd ..
+
 rem 优先用随包内嵌的便携 Python；没有则用系统 Python
 set "PY=%~dp0runtime\python.exe"
 if not exist "%PY%" set "PY=python"
