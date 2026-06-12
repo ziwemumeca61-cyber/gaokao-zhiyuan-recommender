@@ -11,6 +11,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
+from .data_schema import resolve_table
 from .models import AdmissionRecord, Major, School
 
 # 默认数据目录：仓库根下的 data/（模拟数据）
@@ -21,7 +22,7 @@ _DATASET_FILES = ("schools.csv", "majors.csv", "admission_scores.csv")
 
 
 def _has_dataset(path: Path) -> bool:
-    return all((path / f).exists() for f in _DATASET_FILES)
+    return all(resolve_table(path, f).exists() for f in _DATASET_FILES)
 
 
 def resolve_data_dir() -> Path:
@@ -51,6 +52,11 @@ def _cache(func):
 
 
 def _read_rows(path: Path) -> list[dict]:
+    if str(path).endswith(".gz"):
+        import gzip  # noqa: PLC0415
+
+        with gzip.open(path, "rt", encoding="utf-8-sig", newline="") as f:
+            return list(csv.DictReader(f))
     with path.open("r", encoding="utf-8-sig", newline="") as f:
         return list(csv.DictReader(f))
 
@@ -59,7 +65,7 @@ def _read_rows(path: Path) -> list[dict]:
 def load_schools(data_dir: str | None = None) -> dict[str, School]:
     base = Path(data_dir) if data_dir else resolve_data_dir()
     schools: dict[str, School] = {}
-    for r in _read_rows(base / "schools.csv"):
+    for r in _read_rows(resolve_table(base, "schools.csv")):
         schools[r["id"]] = School(
             id=r["id"], name=r["name"], province=r["province"], city=r["city"],
             level=r["level"], type=r["type"],
@@ -72,7 +78,7 @@ def load_schools(data_dir: str | None = None) -> dict[str, School]:
 def load_majors(data_dir: str | None = None) -> dict[str, Major]:
     base = Path(data_dir) if data_dir else resolve_data_dir()
     majors: dict[str, Major] = {}
-    for r in _read_rows(base / "majors.csv"):
+    for r in _read_rows(resolve_table(base, "majors.csv")):
         majors[r["id"]] = Major(
             id=r["id"], name=r["name"], category=r["category"],
             school_id=r["school_id"], riasec_code=r["riasec_code"],
@@ -91,7 +97,7 @@ def load_majors(data_dir: str | None = None) -> dict[str, Major]:
 def load_admissions(data_dir: str | None = None) -> list[AdmissionRecord]:
     base = Path(data_dir) if data_dir else resolve_data_dir()
     records: list[AdmissionRecord] = []
-    for r in _read_rows(base / "admission_scores.csv"):
+    for r in _read_rows(resolve_table(base, "admission_scores.csv")):
         records.append(AdmissionRecord(
             school_id=r["school_id"], major_id=r["major_id"], year=int(r["year"]),
             province=r["province"], subject_type=r["subject_type"],
@@ -103,7 +109,7 @@ def load_admissions(data_dir: str | None = None) -> list[AdmissionRecord]:
 
 def data_available(data_dir: str | None = None) -> bool:
     base = Path(data_dir) if data_dir else resolve_data_dir()
-    return all((base / f).exists() for f in
+    return all(resolve_table(base, f).exists() for f in
                ("schools.csv", "majors.csv", "admission_scores.csv"))
 
 
