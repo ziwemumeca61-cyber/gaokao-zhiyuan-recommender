@@ -83,3 +83,29 @@ if only_ok and student.electives:
     df = df[df["能否报"] == "✅"]
 st.dataframe(df, use_container_width=True, hide_index=True)
 st.caption("录取概率＝拿你的位次与该专业近年录取线（含历年波动）比算得；冲/稳/保为相对你位次的档位。")
+
+# ---------- 把意向专业加入心愿单 ----------
+from gaokao.ui_helpers import get_wishlist, toggle_wishlist  # noqa: E402
+
+st.divider()
+st.markdown("#### ❤️ 把你的意向专业加入心愿单")
+st.caption("选中本校你想报的专业加入心愿单，稍后到 **📋 志愿体检 → 🩺 诊断我选的志愿** 看合理化建议。")
+
+name_to_mid = {majors[m_id].name: m_id
+               for (s_id, m_id) in stats if s_id == sid and m_id in majors}
+wl = get_wishlist()
+addable = sorted(n for n, mid in name_to_mid.items() if mid not in wl)
+if not addable:
+    st.info("本校的专业都已在你的心愿单里。")
+else:
+    picked = st.multiselect("选择意向专业（可多选）", addable, key=f"pick_{sid}")
+    if st.button("❤️ 加入心愿单", disabled=not picked, type="primary"):
+        for n in picked:
+            toggle_wishlist(name_to_mid[n])
+        st.success(f"已把 {len(picked)} 个专业加入心愿单。")
+        st.rerun()
+
+n_wl = len(get_wishlist())
+if n_wl:
+    st.page_link("pages/6_📊_数据大屏.py",
+                 label=f"➡️ 去『志愿体检』诊断我选的 {n_wl} 个志愿", icon="📋")
