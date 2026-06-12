@@ -134,11 +134,23 @@ def build_markdown_wishlist(
         lines.append(f"- {ln}")
     lines.append("")
 
-    lines.append(f"## 志愿顺序（共 {len(items)} 个）")
     if not items:
+        lines.append("## 志愿顺序（共 0 个）")
         lines.append("")
         lines.append("（心愿单为空，先去添加心仪的专业吧）")
         return "\n".join(lines)
+
+    # 志愿诊断（整体体检）
+    from .diagnosis import diagnose  # noqa: PLC0415
+
+    diag = diagnose(student, items)
+    lines.append("## 志愿诊断")
+    lines.append("")
+    for _sev, text in diag.findings:
+        lines.append(f"- {text}")
+    lines.append("")
+
+    lines.append(f"## 志愿顺序（共 {len(items)} 个）")
 
     for i, (school, major) in enumerate(items, start=1):
         loc = f"（{school.level}/{school.city}）" if school else ""
@@ -211,6 +223,13 @@ def build_docx_wishlist(
     doc.add_heading("考生画像", level=1)
     for ln in _profile_lines(student):
         doc.add_paragraph(ln, style="List Bullet")
+
+    if items:
+        from .diagnosis import diagnose  # noqa: PLC0415
+
+        doc.add_heading("志愿诊断", level=1)
+        for _sev, text in diagnose(student, items).findings:
+            doc.add_paragraph(text, style="List Bullet")
 
     doc.add_heading(f"志愿顺序（共 {len(items)} 个）", level=1)
     for i, (school, major) in enumerate(items, start=1):
@@ -292,6 +311,11 @@ def build_pdf_wishlist(
         ("考生画像", "h1"),
     ]
     blocks += [(ln, "body") for ln in _profile_lines(student)]
+    if items:
+        from .diagnosis import diagnose  # noqa: PLC0415
+
+        blocks.append(("志愿诊断", "h1"))
+        blocks += [(text, "body") for _sev, text in diagnose(student, items).findings]
     blocks.append((f"志愿顺序（共 {len(items)} 个）", "h1"))
     for i, (school, major) in enumerate(items, start=1):
         sname = school.name if school else "未知院校"
