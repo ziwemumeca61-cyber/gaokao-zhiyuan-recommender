@@ -14,6 +14,7 @@ from gaokao.data_loader import (  # noqa: E402
 )
 from gaokao.electives import ELECTIVE_SUBJECTS  # noqa: E402
 from gaokao.models import Student  # noqa: E402
+from gaokao import rank_score  # noqa: E402
 from gaokao.ui_helpers import ensure_data, get_student  # noqa: E402
 
 st.title("📝 信息录入")
@@ -51,16 +52,36 @@ if subject_type == "综合":
     if len(electives) != 3:
         st.caption("⚠️ 请选满 3 门；不选则不按选科要求过滤，可能推到你报不了的专业。")
 
-with st.form("student_form"):
-    c1, c2 = st.columns(2)
-    with c1:
-        score = st.number_input("高考分数 *", min_value=200, max_value=900,
-                                value=int(existing.score) if existing else 600)
-    with c2:
-        rank = st.number_input("全省位次 *", min_value=1, max_value=900000,
-                               value=int(existing.rank) if existing else 15000,
-                               help="位次比分数更稳定，是志愿推荐的核心依据")
+# 分数与位次放表单外：输入分数即按本省一分一段实时估算位次（位次是推荐的核心依据）
+st.markdown("**分数与位次 ***")
+table = rank_score.build_table(province, subject_type)
+sc1, sc2 = st.columns(2)
+with sc1:
+    score = st.number_input("高考分数", min_value=200, max_value=900,
+                            value=int(existing.score) if existing else 600)
+with sc2:
+    if table is not None:
+        conv = table.rank_for_score(score)
+        est = conv.value
+        auto = st.checkbox("📊 用分数自动估位次", value=True,
+                           help="按本省一分一段把分数换算成位次；取消勾选可手动填写。")
+        if auto:
+            rank = est
+            st.caption(f"约第 **{est:,}** 名"
+                       + ("（超出实测档位、按趋势外推）" if conv.clamped else "（基于实测一分一段）")
+                       + "　位次比分数更准，是推荐核心依据。")
+        else:
+            rank = st.number_input(
+                "全省位次", min_value=1, max_value=900000,
+                value=int(existing.rank) if existing and existing.rank > 0 else est)
+    else:
+        rank = st.number_input(
+            "全省位次", min_value=1, max_value=900000,
+            value=int(existing.rank) if existing else 15000,
+            help="位次比分数更稳定，是志愿推荐的核心依据")
+        st.caption("该省暂无一分一段换算表，请手动填写位次。")
 
+with st.form("student_form"):
     st.markdown("**偏好（可选，用于个性化排序）**")
     c3, c4, c5 = st.columns(3)
     with c3:
@@ -97,7 +118,7 @@ with st.form("student_form"):
     submitted = st.form_submit_button("💾 保存并生成画像", type="primary")
 
 st.page_link("pages/10_🔢_一分一段.py",
-             label="🔢 不确定分数对应的位次？用一分一段表换算", icon="🔢")
+             label="🔢 想自己核对位次 / 反查分数？打开一分一段表", icon="🔢")
 
 if submitted:
     student = Student(

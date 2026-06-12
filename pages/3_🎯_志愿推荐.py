@@ -160,3 +160,9 @@ for col, tier in zip(columns, TIERS):
                 with st.expander("📚 这个专业是干嘛的？"):
                     render_major_detail(rec.major)
                 wishlist_button(rec.major, key=f"wish_rec_{tier}_{rec.major.id}")
+
+st.divider()
+st.markdown("##### 把心仪的 ❤️ 加进心愿单后，下一步：")
+n1, n2 = st.columns(2)
+n1.page_link("pages/6_📊_数据大屏.py", label="🩺 体检我选的志愿（看合不合理）", icon="📋")
+n2.page_link("pages/8_❤️_我的志愿表.py", label="❤️ 整理顺序 / 一键导出", icon="❤️")
