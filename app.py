@@ -120,11 +120,12 @@ wishlist_page = st.Page("pages/8_❤️_我的志愿表.py", title="我的志愿
 compare_page = st.Page("pages/9_🆚_院校对比.py", title="院校对比", icon="🆚")
 rankscore_page = st.Page("pages/10_🔢_一分一段.py", title="一分一段换算", icon="🔢")
 school_page = st.Page("pages/12_🏛️_院校查询.py", title="院校查询", icon="🏛️")
+diagnose_page = st.Page("pages/13_🩺_志愿诊断.py", title="志愿诊断", icon="🩺")
 datasource_page = st.Page("pages/11_⚙️_数据源.py", title="数据源", icon="⚙️")
 
 nav = st.navigation({
     "🏠 开始": [home_page, info_page],
-    "🎯 推荐与选校": [recommend_page, cards_page, wishlist_page, compare_page],
+    "🎯 推荐与选校": [recommend_page, cards_page, wishlist_page, diagnose_page, compare_page],
     "🧰 查询工具": [assess_page, rankscore_page, school_page, encyclo_page,
                 dashboard_page, ai_page],
     "⚙️ 设置": [datasource_page],
