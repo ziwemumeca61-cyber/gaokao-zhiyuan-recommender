@@ -11,10 +11,13 @@ dependencies = [
     "numpy>=1.24",
     "plotly>=5.18",
     "openai>=1.30",
+    # 导出 Word/PDF 为核心功能，纳入默认依赖（缺失时仍优雅降级为仅 Markdown）
+    "python-docx>=1.1",
+    "reportlab>=4.0",
 ]
 
 [project.optional-dependencies]
-# 导出 Word/PDF 的增强依赖（缺失时仅导出 Markdown）
+# 保留 export 分组以兼容旧的安装命令（内容已并入默认依赖）
 export = [
     "python-docx>=1.1",
     "reportlab>=4.0",
