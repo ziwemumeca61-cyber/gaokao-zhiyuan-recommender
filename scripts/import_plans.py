@@ -129,10 +129,13 @@ def main() -> int:
         w.writeheader()
         w.writerows(rows)
 
-    # 刷新首页/下拉用的预计算元数据
+    # 刷新首页/下拉用的预计算元数据 + 按省分区
     sys.path.insert(0, str(ROOT / "src"))
-    from gaokao.data_loader import write_admission_meta  # noqa: PLC0415
+    from gaokao.data_loader import write_admission_meta, write_partitions  # noqa: PLC0415
+    from gaokao.recommender.history import write_all_stats  # noqa: PLC0415
     write_admission_meta(str(REAL))
+    write_partitions(str(REAL))
+    write_all_stats(str(REAL))
 
     print(f"\n=== 完成 ===\n汇总真实计划键 {len(plan_sum):,}；"
           f"覆盖更新 admission_scores 记录 {updated:,} / {len(rows):,}。"

@@ -254,8 +254,11 @@ def main() -> int:
             w.writerow(r)
     tmp_adm.replace(REAL / "admission_scores.csv")
 
-    from gaokao.data_loader import write_admission_meta  # noqa: PLC0415
+    from gaokao.data_loader import write_admission_meta, write_partitions  # noqa: PLC0415
+    from gaokao.recommender.history import write_all_stats  # noqa: PLC0415
     write_admission_meta(str(REAL))
+    write_partitions(str(REAL))
+    write_all_stats(str(REAL))
 
     print("\n=== 完成 ===")
     print(f"新增院校 {len(new_schools)}，新增专业 {len(new_majors)}")

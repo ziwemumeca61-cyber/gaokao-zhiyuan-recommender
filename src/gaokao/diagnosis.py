@@ -10,10 +10,9 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from . import electives as el
-from .data_loader import load_admissions_for
 from .models import Major, School, Student
 from .recommender import ml_model, rank_based
-from .recommender.history import aggregate
+from .recommender.history import aggregate_cached
 
 
 @dataclass
@@ -54,8 +53,7 @@ def diagnose(student: Student, items: list[tuple[School | None, Major]]) -> Diag
 
     severity 取值：error / warning / info / success，调用方据此选择展示样式。
     """
-    stats = aggregate(load_admissions_for(student.province, student.subject_type),
-                      student.province, student.subject_type)
+    stats = aggregate_cached(student.province, student.subject_type)
 
     diag = Diagnosis()
     for school, major in items:

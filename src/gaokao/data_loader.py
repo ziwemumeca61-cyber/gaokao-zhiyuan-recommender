@@ -51,6 +51,17 @@ def _cache(func):
         return lru_cache(maxsize=None)(func)
 
 
+def _cache_resource(func):
+    """大块只读数据用 st.cache_resource：返回同一实例、不做 pickle 拷贝，
+    避免 cache_data 每次调用都反序列化（114k 专业对象拷贝约 1s）。仅用于不被修改的数据。"""
+    try:
+        import streamlit as st  # noqa: PLC0415
+
+        return st.cache_resource(show_spinner=False)(func)
+    except Exception:
+        return lru_cache(maxsize=None)(func)
+
+
 def _read_rows(path: Path) -> list[dict]:
     if str(path).endswith(".gz"):
         import gzip  # noqa: PLC0415
@@ -80,7 +91,7 @@ def _row_to_admission(r: list[str]) -> AdmissionRecord:
     )
 
 
-@_cache
+@_cache_resource
 def load_schools(data_dir: str | None = None) -> dict[str, School]:
     base = Path(data_dir) if data_dir else resolve_data_dir()
     schools: dict[str, School] = {}
@@ -93,7 +104,7 @@ def load_schools(data_dir: str | None = None) -> dict[str, School]:
     return schools
 
 
-@_cache
+@_cache_resource
 def load_majors(data_dir: str | None = None) -> dict[str, Major]:
     base = Path(data_dir) if data_dir else resolve_data_dir()
     majors: dict[str, Major] = {}
@@ -112,27 +123,81 @@ def load_majors(data_dir: str | None = None) -> dict[str, Major]:
     return majors
 
 
-@_cache
-def load_admissions(data_dir: str | None = None) -> list[AdmissionRecord]:
-    """全量录取记录。数据已达数百万条，用 csv.reader + 位置解析以降低开销；
-    只需单省时请改用 load_admissions_for，避免构建整表对象。"""
+_PARTITION_DIR = "admissions"   # 按省拆分的录取数据子目录
+
+
+def _partition_path(base: Path, province: str) -> Path:
+    return base / _PARTITION_DIR / f"{province}.csv.gz"
+
+
+def write_partitions(data_dir: str | None = None) -> int:
+    """把 admission_scores 按省拆成 admissions/{省}.csv.gz，使单省加载只读小文件。
+
+    导入脚本改动录取数据后应调用本函数刷新；返回写出的分区数。"""
+    import gzip  # noqa: PLC0415
+
     base = Path(data_dir) if data_dir else resolve_data_dir()
+    pdir = base / _PARTITION_DIR
+    pdir.mkdir(parents=True, exist_ok=True)
+    for old in pdir.glob("*.csv.gz"):
+        old.unlink()
+    handles: dict[str, object] = {}
+    writers: dict[str, object] = {}
+    try:
+        with _open_text(resolve_table(base, "admission_scores.csv")) as f:
+            rd = csv.reader(f)
+            header = next(rd, None)
+            for r in rd:
+                if not r:
+                    continue
+                prov = r[3]
+                w = writers.get(prov)
+                if w is None:
+                    h = gzip.open(_partition_path(base, prov), "wt",
+                                  encoding="utf-8-sig", newline="", compresslevel=9)
+                    handles[prov] = h
+                    w = writers[prov] = csv.writer(h)
+                    if header:
+                        w.writerow(header)
+                w.writerow(r)
+    finally:
+        for h in handles.values():
+            h.close()
+    return len(handles)
+
+
+@_cache_resource
+def load_admissions(data_dir: str | None = None) -> list[AdmissionRecord]:
+    """全量录取记录（仅"数据大屏"等跨省统计需要）。有按省分区则拼接，否则读整表。"""
+    base = Path(data_dir) if data_dir else resolve_data_dir()
+    pdir = base / _PARTITION_DIR
+    parts = sorted(pdir.glob("*.csv.gz")) if pdir.exists() else []
+    out: list[AdmissionRecord] = []
+    if parts:
+        for p in parts:
+            with _open_text(p) as f:
+                rd = csv.reader(f)
+                next(rd, None)
+                out.extend(_row_to_admission(r) for r in rd if r)
+        return out
     with _open_text(resolve_table(base, "admission_scores.csv")) as f:
         rd = csv.reader(f)
         next(rd, None)  # 跳过表头
         return [_row_to_admission(r) for r in rd if r]
 
 
-@_cache
+@_cache_resource
 def load_admissions_for(
     province: str, subject_type: str, data_dir: str | None = None
 ) -> list[AdmissionRecord]:
-    """只加载某省某科类的录取记录（推荐/诊断/对比只关心一个省，避免整表构建）。
+    """只加载某省某科类的录取记录（推荐/诊断/对比只关心一个省）。
 
-    仍需顺序扫描文件，但只为命中的行建对象，比 load_admissions 快数倍且省内存；
+    有 admissions/{省}.csv.gz 分区时只读该小文件（亚秒级）；否则回退扫描整表。
     结果按 (省,科类) 缓存，重复调用即时返回。"""
     base = Path(data_dir) if data_dir else resolve_data_dir()
-    with _open_text(resolve_table(base, "admission_scores.csv")) as f:
+    part = _partition_path(base, province)
+    src = part if part.exists() else resolve_table(base, "admission_scores.csv")
+    with _open_text(src) as f:
         rd = csv.reader(f)
         next(rd, None)
         return [_row_to_admission(r) for r in rd

@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..data_loader import load_admissions_for, load_majors, load_schools
+from ..data_loader import load_majors, load_schools
 from ..models import Major, School, Student
 from . import interest, ml_model, rank_based, scoring
-from .history import aggregate
+from .history import aggregate_cached
 
 
 @dataclass
@@ -44,8 +44,7 @@ def compare(
     """按给定 (school_id, major_id) 顺序返回对比行；保持入参顺序，跳过无效 id。"""
     schools = load_schools(data_dir)
     majors = load_majors(data_dir)
-    stats = aggregate(load_admissions_for(student.province, student.subject_type, data_dir),
-                      student.province, student.subject_type)
+    stats = aggregate_cached(student.province, student.subject_type, data_dir)
 
     rows: list[CompareRow] = []
     for school_id, major_id in pairs:
