@@ -23,7 +23,7 @@ st.set_page_config(page_title=branding.get("app_title"),
 def render_home() -> None:
     """引导式首页：数据徽章 + 三步走 + 动态下一步。"""
     from gaokao.data_loader import (  # noqa: PLC0415
-        active_source, available_provinces, load_admissions, load_majors, load_schools,
+        active_source, admission_count, available_provinces, load_majors, load_schools,
     )
     from gaokao.ui_helpers import ensure_data, get_student  # noqa: PLC0415
 
@@ -40,7 +40,7 @@ def render_home() -> None:
         st.success(
             f"✅ 当前为**真实数据**（{'、'.join(available_provinces())}）："
             f"{len(load_schools())} 所院校 · {len(load_majors())} 个专业 · "
-            f"{len(load_admissions()):,} 条录取记录")
+            f"{admission_count():,} 条录取记录")
     else:
         st.info("🧪 当前为**演示数据**（模拟），仅供体验；导入真实数据后自动切换"
                 "（见 ⚙️ 数据源）。")

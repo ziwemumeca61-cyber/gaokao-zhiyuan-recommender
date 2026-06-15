@@ -129,8 +129,14 @@ def main() -> int:
         w.writeheader()
         w.writerows(rows)
 
+    # 刷新首页/下拉用的预计算元数据
+    sys.path.insert(0, str(ROOT / "src"))
+    from gaokao.data_loader import write_admission_meta  # noqa: PLC0415
+    write_admission_meta(str(REAL))
+
     print(f"\n=== 完成 ===\n汇总真实计划键 {len(plan_sum):,}；"
-          f"覆盖更新 admission_scores 记录 {updated:,} / {len(rows):,}。")
+          f"覆盖更新 admission_scores 记录 {updated:,} / {len(rows):,}。"
+          f"\n已刷新 admissions_meta.json。")
     return 0
 
 

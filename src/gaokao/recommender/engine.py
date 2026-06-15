@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .. import electives
-from ..data_loader import load_admissions, load_majors, load_schools
+from ..data_loader import load_admissions_for, load_majors, load_schools
 from ..models import TIERS, Recommendation, Student
 from . import interest, ml_model, rank_based, scoring
 from .history import aggregate
@@ -18,7 +18,7 @@ def recommend(
     """返回按 冲/稳/保 分组、组内按综合分降序的推荐结果。"""
     schools = load_schools(data_dir)
     majors = load_majors(data_dir)
-    admissions = load_admissions(data_dir)
+    admissions = load_admissions_for(student.province, student.subject_type, data_dir)
 
     stats = aggregate(admissions, student.province, student.subject_type)
     buckets: dict[str, list[Recommendation]] = {t: [] for t in TIERS}

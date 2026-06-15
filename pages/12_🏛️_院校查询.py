@@ -11,7 +11,7 @@ import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from gaokao import electives as el  # noqa: E402
-from gaokao.data_loader import load_admissions, load_majors, load_schools  # noqa: E402
+from gaokao.data_loader import load_admissions_for, load_majors, load_schools  # noqa: E402
 from gaokao.recommender import ml_model, rank_based  # noqa: E402
 from gaokao.recommender.history import aggregate  # noqa: E402
 from gaokao.ui_helpers import ensure_data, render_scope_banner, require_student  # noqa: E402
@@ -30,7 +30,8 @@ render_scope_banner(student)
 
 schools = load_schools()
 majors = load_majors()
-stats = aggregate(load_admissions(), student.province, student.subject_type)
+stats = aggregate(load_admissions_for(student.province, student.subject_type),
+                  student.province, student.subject_type)
 
 # 只列出在该省该科类有招生数据的院校
 sids_with_data = {sid for (sid, _mid) in stats}
