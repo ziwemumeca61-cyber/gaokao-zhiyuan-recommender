@@ -17,28 +17,29 @@ from gaokao.ui_helpers import (  # noqa: E402
 )
 
 st.title("🧭 霍兰德兴趣测评")
-st.caption("15 道情景小题，了解你是哪种'职业兴趣类型'，从'你是什么样的人'找到'适合的专业'。")
+st.caption("18 句小描述，看哪句像你，凭第一感觉打分，没有对错——据此找到适合你的专业方向。")
 
 if not ensure_data():
     st.stop()
 
-st.markdown("**每题二选一**：选「更像你」的那个，凭第一感觉、没有对错。")
+st.markdown("**逐句打分**：每句独立选「像我 / 一般 / 不像我」，不用纠结、也不用跟别的比。")
+
+_rating_labels = [lbl for lbl, _ in assessment.RATINGS]
+_rating_value = dict(assessment.RATINGS)
 
 with st.form("riasec_form"):
-    answers: dict[int, str] = {}
-    for idx, (stem, opt_a, dim_a, opt_b, dim_b) in enumerate(assessment.SCENARIOS):
-        st.markdown(f"**{idx + 1}. {stem}**")
-        pick = st.radio("（选更像你的那个）", [opt_a, opt_b], index=None,
-                        key=f"s{idx}", label_visibility="collapsed")
-        if pick == opt_a:
-            answers[idx] = dim_a
-        elif pick == opt_b:
-            answers[idx] = dim_b
+    answers: dict[int, float] = {}
+    for idx, (text, _dim) in enumerate(assessment.STATEMENTS):
+        st.markdown(f"**{idx + 1}. {text}**")
+        pick = st.radio("（凭第一感觉选）", _rating_labels, index=None,
+                        key=f"s{idx}", label_visibility="collapsed", horizontal=True)
+        if pick is not None:
+            answers[idx] = _rating_value[pick]
     submitted = st.form_submit_button("🎯 计算我的兴趣画像", type="primary")
 
-if submitted and len(answers) < len(assessment.SCENARIOS):
-    st.warning(f"还有 {len(assessment.SCENARIOS) - len(answers)} 题没选，"
-               "没选的不计入；选得越全结果越准。")
+if submitted and len(answers) < len(assessment.STATEMENTS):
+    st.warning(f"还有 {len(assessment.STATEMENTS) - len(answers)} 句没打分，"
+               "没打的不计入；打得越全结果越准。")
 
 if submitted:
     riasec = assessment.score(answers)
