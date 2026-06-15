@@ -220,3 +220,7 @@ __marimo__/
 # 真实录取数据：默认随仓库提交（当前为山东，逐校专业录取线）。
 # 如需放本地临时数据而不入库，改放 data/real_local/（已忽略）。
 data/real_local/
+
+# 原始资料包：体积大且导入后即无用，不入库（避免撑大仓库历史）。
+# 投放到 data/incoming/ 后由 scripts/import_*.py 提取进 data/real 与 data/segments。
+data/incoming/*.zip
