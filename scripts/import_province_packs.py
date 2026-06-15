@@ -62,15 +62,23 @@ def read_existing(path: Path) -> list[dict]:
 
 
 def open_score_xlsx(zip_path: Path) -> io.BytesIO | None:
-    """打开省 zip -> 内嵌 zip -> 返回「专业录取分数」xlsx 的字节流。"""
+    """返回「专业录取分数」xlsx 的字节流。
+
+    兼容两种资料包结构：
+    - 「先保存才能用」版：数据在外层 zip 内嵌的一个 zip 里；
+    - 「永久更新」版：数据 xlsx 直接放在外层 zip 根目录下（无内嵌 zip）。
+    """
     zf = zipfile.ZipFile(zip_path)
-    inners = [n for n in zf.namelist() if n.endswith(".zip")]
-    if not inners:
-        return None
-    izf = zipfile.ZipFile(io.BytesIO(zf.read(inners[0])))
-    for n in izf.namelist():
+    # 优先在内嵌 zip 中找
+    for inner in (n for n in zf.namelist() if n.endswith(".zip")):
+        izf = zipfile.ZipFile(io.BytesIO(zf.read(inner)))
+        for n in izf.namelist():
+            if n.endswith(".xlsx") and "专业录取分数" in gbk(n):
+                return io.BytesIO(izf.read(n))
+    # 回退：直接在外层找
+    for n in zf.namelist():
         if n.endswith(".xlsx") and "专业录取分数" in gbk(n):
-            return io.BytesIO(izf.read(n))
+            return io.BytesIO(zf.read(n))
     return None
 
 
