@@ -117,7 +117,7 @@ with tab_rec:
 
                 fig = px.line(x=[r.year for r in records], y=[r.min_rank for r in records],
                               markers=True, labels={"x": "年份", "y": "最低录取位次"})
-                fig.update_traces(line_color="#FF5A5F")
+                fig.update_traces(line_color="#1FA463")
                 fig.add_hline(y=student.rank, line_dash="dash", line_color="#00A699",
                               annotation_text=f"你的位次 {student.rank}")
                 fig.update_xaxes(dtick=1)

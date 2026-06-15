@@ -154,7 +154,7 @@ def riasec_radar(riasec: dict[str, float], title: str = "兴趣画像"):
     values = [riasec.get(d, 0.0) for d in RIASEC_DIMENSIONS]
     fig = go.Figure(go.Scatterpolar(
         r=values + [values[0]], theta=labels + [labels[0]],
-        fill="toself", line_color="#FF5A5F"))
+        fill="toself", line_color="#1FA463"))
     fig.update_layout(
         polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
         showlegend=False, title=title, height=380)

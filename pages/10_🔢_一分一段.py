@@ -119,7 +119,7 @@ st.markdown("#### 📈 分数—位次曲线")
 pts = table.points()
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=[s for s, _ in pts], y=[r for _, r in pts],
-                         mode="lines", name="一分一段", line_color="#FF5A5F"))
+                         mode="lines", name="一分一段", line_color="#1FA463"))
 fig.add_trace(go.Scatter(x=[score_val], y=[rank_val], mode="markers",
                          name="你的位置", marker=dict(size=12, color="#00A699")))
 fig.update_yaxes(autorange="reversed", title="全省位次（越小越好）")
