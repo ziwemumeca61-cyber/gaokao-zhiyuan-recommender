@@ -35,9 +35,11 @@ def test_higher_volatility_widens_interval():
 
 
 def test_confidence_label_thresholds():
-    assert ml_model.confidence_label(0.50, 0.60) == "高"
-    assert ml_model.confidence_label(0.40, 0.70) == "中"
-    assert ml_model.confidence_label(0.20, 0.90) == "低"
+    # 把握度=预测可靠度：年份足且线稳→高，年份少/波动大→中/低（与冲稳保无关）
+    assert ml_model.confidence_label(rank_cv=0.10, years=4) == "高"
+    assert ml_model.confidence_label(rank_cv=0.10, years=2) == "中"
+    assert ml_model.confidence_label(rank_cv=0.60, years=4) == "低"
+    assert ml_model.confidence_label(rank_cv=0.10, years=1) == "低"
 
 
 def test_prob_half_when_rank_equals_ref():

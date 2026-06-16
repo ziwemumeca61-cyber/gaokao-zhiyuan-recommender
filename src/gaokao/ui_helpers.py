@@ -110,13 +110,19 @@ def render_major_detail(major: Major) -> None:
     from .major_knowledge import detail_for  # noqa: PLC0415
 
     d = detail_for(major)
-    st.markdown(f"**专业简介** ｜ {d['intro']}")
-    st.markdown("**主修课程** ｜ " + "、".join(d["core_courses"]))
-    st.markdown("**就业去向** ｜ " + "、".join(d["career_paths"]))
-    if d["industry_outlook"]:
-        st.markdown(f"**行业前景** ｜ {d['industry_outlook']}")
-    if d["suits"]:
-        st.markdown(f"**适合谁** ｜ {d['suits']}")
+    if d["covered"]:
+        st.markdown(f"**专业简介** ｜ {d['intro']}")
+        if d["core_courses"]:
+            st.markdown("**主修课程** ｜ " + "、".join(d["core_courses"]))
+        if d["career_paths"]:
+            st.markdown("**就业去向** ｜ " + "、".join(d["career_paths"]))
+        if d["industry_outlook"]:
+            st.markdown(f"**行业前景** ｜ {d['industry_outlook']}")
+        if d["suits"]:
+            st.markdown(f"**适合谁** ｜ {d['suits']}")
+    else:
+        st.markdown(f"**专业简介** ｜ 暂未收录「{major.name}」的详细科普，"
+                    "可查阅目标院校培养方案与官网了解课程与就业。")
     if major.subject_req:
         from .electives import requirement_label  # noqa: PLC0415
 

@@ -44,7 +44,7 @@ def recommend(
 
     for (tier, school, major, stat), (probability, prob_low, prob_high) in zip(
             picked, intervals):
-        confidence = ml_model.confidence_label(prob_low, prob_high)
+        confidence = ml_model.confidence_label(stat.rank_cv, stat.years, stat.trend)
         interest_match = interest.match(student.riasec, major.riasec_code)
         composite = scoring.composite(
             student, school, major, probability, interest_match, weights)

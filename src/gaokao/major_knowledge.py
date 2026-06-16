@@ -172,12 +172,18 @@ def heat_for(name: str, category: str) -> float:
 
 
 def detail_for(major: Major) -> dict:
-    """合并专业自带字段与知识库兜底，返回用于展示的完整科普字典。"""
-    k = knowledge_for(major.name, major.category)
+    """返回用于展示的科普字典。
+
+    内容仅来自专业自带字段或精选库（精确/前缀命中）；**未收录则各字段留空**，
+    并置 covered=False，由界面提示"暂未收录"，不再用学科门类通用模板硬凑。
+    """
+    k = _lookup(major.name, _curated()) or {}
+    intro = major.intro or k.get("intro", "")
     return {
-        "intro": major.intro or k["intro"],
-        "core_courses": major.core_courses or list(k["core_courses"]),
-        "career_paths": major.career_paths or list(k["career_paths"]),
-        "industry_outlook": major.industry_outlook or k["industry_outlook"],
-        "suits": major.suits or k["suits"],
+        "covered": bool(intro),
+        "intro": intro,
+        "core_courses": major.core_courses or list(k.get("core_courses", [])),
+        "career_paths": major.career_paths or list(k.get("career_paths", [])),
+        "industry_outlook": major.industry_outlook or k.get("industry_outlook", ""),
+        "suits": major.suits or k.get("suits", ""),
     }

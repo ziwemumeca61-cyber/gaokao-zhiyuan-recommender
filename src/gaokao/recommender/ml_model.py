@@ -84,8 +84,24 @@ def predict_interval(
         student_rank, [(ref_rank, trend, rank_cv, years, plan, plan_ratio)])[0]
 
 
-def confidence_label(low: float, high: float) -> str:
-    """按区间宽度给"把握度"标签：越窄越有把握。"""
+def confidence_label(rank_cv: float, years: int, trend: float = 0.0) -> str:
+    """把握度 = 对该专业录取线预测的**可靠度**，取决于历史年数与录取线波动，
+    与考生处在冲/稳/保无关（避免"稳但把握度低"的困惑）。
+
+    年份足、线稳 → 高；只有一年或波动/大小年明显 → 低。
+    """
+    if years <= 1:
+        return "低"
+    vol = math.sqrt(rank_cv * rank_cv + (0.6 * abs(trend)) ** 2)
+    if years >= 3 and vol <= 0.18:
+        return "高"
+    if vol <= 0.35:
+        return "中"
+    return "低"
+
+
+def _confidence_by_width(low: float, high: float) -> str:
+    """（旧）按概率区间宽度给把握度，保留备用。"""
     width = high - low
     if width <= 0.18:
         return "高"

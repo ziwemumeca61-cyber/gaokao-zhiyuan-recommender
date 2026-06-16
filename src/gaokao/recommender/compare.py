@@ -75,7 +75,7 @@ def compare(
             tier=rank_based.classify(student.rank, stat.ref_rank) or "",
             ratio=round(rank_based.ratio(student.rank, stat.ref_rank), 3),
             probability=probability, prob_low=lo, prob_high=hi,
-            confidence=ml_model.confidence_label(lo, hi),
+            confidence=ml_model.confidence_label(stat.rank_cv, stat.years, stat.trend),
             interest_match=interest_match, composite_score=composite,
             ref_rank=stat.ref_rank, ref_score=stat.ref_score, trend=stat.trend,
         ))

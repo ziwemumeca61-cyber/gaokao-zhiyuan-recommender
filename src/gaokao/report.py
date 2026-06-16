@@ -22,12 +22,13 @@ def _scope_note(student: Student) -> str:
 
 
 def _intro(major: Major) -> str:
-    """专业简介：自带为空时用知识库兜底。"""
-    if major.intro:
-        return major.intro
-    from .major_knowledge import knowledge_for  # noqa: PLC0415
+    """专业简介：取自带或精选库；未收录则给诚实提示，不用门类模板硬凑。"""
+    from .major_knowledge import detail_for  # noqa: PLC0415
 
-    return knowledge_for(major.name, major.category)["intro"]
+    d = detail_for(major)
+    if d["covered"]:
+        return d["intro"]
+    return "暂未收录该专业的详细介绍，建议查阅目标院校培养方案。"
 
 
 def _advice(major: Major) -> dict[str, str]:
