@@ -90,8 +90,9 @@ def _build_reasons(student, school, major, stat, tier, probability,
         reasons.append("近年录取位次波动较大（疑似大小年），录取概率不确定性偏高")
     elif stat.trend > 0.10:
         reasons.append("近年录取位次走高、竞争加剧，注意风险")
-    if stat.plan_ratio >= 1.2:
+    # 仅在招生计划体量够大（≥10）时提示扩缩招——小专业计划多为个位数，其比值噪声大、不可靠
+    if stat.total_plan >= 10 and stat.plan_ratio >= 1.2:
         reasons.append(f"近一年招生计划明显多于前几年（约 {stat.plan_ratio:.1f} 倍），录取线或有走低趋势")
-    elif stat.plan_ratio <= 0.8:
+    elif stat.total_plan >= 10 and stat.plan_ratio <= 0.8:
         reasons.append("近一年招生计划较前几年减少，录取线或走高，需谨慎")
     return reasons

@@ -22,8 +22,9 @@ _STATS_DIR = "stats"   # 预计算的按 (省,科类) 聚合结果子目录
 _STATS_FIELDS = ["school_id", "major_id", "ref_rank", "ref_score", "trend",
                  "total_plan", "years", "rank_cv", "plan_ratio"]
 
-# 近年权重：越近的年份权重越高（最多取最近四年，年份多则估计更稳、波动更可信）
-_RECENCY_WEIGHTS = [0.4, 0.3, 0.2, 0.1]
+# 参考位次的近年权重：回测(留出法预测2025)显示分数线逐年漂移，过度平均旧年份反而更差，
+# 故只用最近两年加权（中位误差 11.4%→9.8%、±20%命中 72%→76%）；波动 rank_cv 仍取最近四年。
+_RECENCY_WEIGHTS = [0.7, 0.3]
 
 
 @dataclass
