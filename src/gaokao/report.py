@@ -169,6 +169,140 @@ def build_markdown_wishlist(
 
 
 # ===========================================================================
+# 零依赖兜底：Markdown -> RTF（Word 可开）/ 可打印 HTML（浏览器另存为 PDF）
+# 无需 python-docx / reportlab，保证任何环境都能导出。
+# ===========================================================================
+def _strip_bold(s: str) -> str:
+    return s.replace("**", "")
+
+
+def _md_lines(md: str):
+    """把我们生成的简单 Markdown 解析成 (类型, 文本) 序列。"""
+    for raw in md.split("\n"):
+        line = raw.rstrip()
+        if not line:
+            yield ("blank", "")
+        elif line.startswith("# "):
+            yield ("h1", line[2:])
+        elif line.startswith("## "):
+            yield ("h2", line[3:])
+        elif line.startswith("> "):
+            yield ("quote", line[2:])
+        elif line.startswith("- "):
+            yield ("li", line[2:])
+        elif line == ">":
+            yield ("blank", "")
+        else:
+            yield ("p", line)
+
+
+def _html_escape(s: str) -> str:
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def _md_to_html(md: str, title: str) -> bytes:
+    """转为自带样式、适合打印为 PDF 的 HTML。"""
+    body: list[str] = []
+    in_ul = False
+
+    def close_ul():
+        nonlocal in_ul
+        if in_ul:
+            body.append("</ul>")
+            in_ul = False
+
+    for kind, text in _md_lines(md):
+        # 行内加粗 **x** -> <b>
+        html = _html_escape(text)
+        while "**" in html:
+            html = html.replace("**", "<b>", 1).replace("**", "</b>", 1)
+        if kind == "li":
+            if not in_ul:
+                body.append("<ul>")
+                in_ul = True
+            body.append(f"<li>{html}</li>")
+            continue
+        close_ul()
+        if kind == "h1":
+            body.append(f"<h1>{html}</h1>")
+        elif kind == "h2":
+            body.append(f"<h2>{html}</h2>")
+        elif kind == "quote":
+            body.append(f"<p class='note'>{html}</p>")
+        elif kind == "p":
+            body.append(f"<p>{html}</p>")
+    close_ul()
+    doc = (
+        "<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'>"
+        f"<title>{_html_escape(title)}</title><style>"
+        "body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;max-width:780px;"
+        "margin:24px auto;padding:0 16px;color:#222;line-height:1.7}"
+        "h1{font-size:24px}h2{font-size:18px;border-bottom:1px solid #ddd;padding-bottom:4px;margin-top:24px}"
+        ".note{color:#888;font-size:13px}.tip{background:#EAF6EE;border:1px solid #1FA463;"
+        "padding:8px 12px;border-radius:6px;color:#1a7a47;font-size:13px}"
+        "li{margin:2px 0}@media print{.tip{display:none}}</style></head><body>"
+        "<p class='tip'>💡 用浏览器打开本文件后，按 Ctrl/⌘ + P → 目标选择“另存为 PDF”即可导出 PDF。</p>"
+        + "".join(body) + "</body></html>"
+    )
+    return doc.encode("utf-8")
+
+
+def _rtf_text(s: str) -> str:
+    """RTF 文本转义：反斜杠/花括号转义，非 ASCII 用 \\uN? 表示（含中文）。"""
+    out: list[str] = []
+    for ch in s:
+        if ch in "\\{}":
+            out.append("\\" + ch)
+        elif ord(ch) > 127:
+            cp = ord(ch)
+            if cp > 32767:
+                cp -= 65536
+            out.append(f"\\u{cp}?")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _md_to_rtf(md: str) -> bytes:
+    """转为 RTF（Word/WPS 可直接打开），中文用 Unicode 转义，无需任何库。"""
+    parts: list[str] = [r"{\rtf1\ansi\ansicpg936\deff0"
+                        r"{\fonttbl{\f0\fnil\fcharset134 SimSun;}}\f0\fs22"]
+    for kind, text in _md_lines(md):
+        if kind == "blank":
+            parts.append(r"\par")
+            continue
+        body = _rtf_text(_strip_bold(text))
+        if kind == "h1":
+            parts.append(r"\pard\sa120\b\fs36 " + body + r"\b0\par")
+        elif kind == "h2":
+            parts.append(r"\pard\sa80\b\fs28 " + body + r"\b0\par")
+        elif kind == "li":
+            parts.append(r"\pard\fi-280\li360\sa40 \bullet  " + body + r"\par")
+        elif kind == "quote":
+            parts.append(r"\pard\sa40\i\fs18 " + body + r"\i0\par")
+        else:
+            parts.append(r"\pard\sa40 " + body + r"\par")
+    parts.append("}")
+    return "".join(parts).encode("utf-8")
+
+
+def build_rtf_report(student: Student, buckets: dict[str, list[Recommendation]]) -> bytes:
+    return _md_to_rtf(build_markdown_report(student, buckets))
+
+
+def build_rtf_wishlist(student: Student, items: list[tuple[School | None, Major]]) -> bytes:
+    return _md_to_rtf(build_markdown_wishlist(student, items))
+
+
+def build_html_report(student: Student, buckets: dict[str, list[Recommendation]]) -> bytes:
+    return _md_to_html(build_markdown_report(student, buckets), "高考志愿推荐报告")
+
+
+def build_html_wishlist(student: Student, items: list[tuple[School | None, Major]]) -> bytes:
+    return _md_to_html(build_markdown_wishlist(student, items), "我的志愿表")
+
+
+# ===========================================================================
 # Word（python-docx）
 # ===========================================================================
 def docx_available() -> bool:

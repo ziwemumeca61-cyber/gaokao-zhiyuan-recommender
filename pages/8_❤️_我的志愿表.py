@@ -55,7 +55,10 @@ with st.container(border=True):
                 file_name="我的志愿表.docx", use_container_width=True,
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         else:
-            st.button("Word（未安装）", disabled=True, use_container_width=True)
+            st.download_button(
+                "⬇️ Word(.rtf)", report.build_rtf_wishlist(student, items),
+                file_name="我的志愿表.rtf", mime="application/rtf",
+                use_container_width=True, help="RTF 格式，Word/WPS 可直接打开")
     with cols[2]:
         if report.pdf_available():
             st.download_button(
@@ -63,10 +66,10 @@ with st.container(border=True):
                 file_name="我的志愿表.pdf", mime="application/pdf",
                 use_container_width=True)
         else:
-            st.button("PDF（未安装）", disabled=True, use_container_width=True)
-    if not (report.docx_available() and report.pdf_available()):
-        st.caption("💡 Word/PDF 导出按钮置灰是因为本机未装导出库。在项目目录执行 "
-                   "`pip install -e .`（或 `pip install python-docx reportlab`）后重启即可。")
+            st.download_button(
+                "⬇️ PDF(网页版)", report.build_html_wishlist(student, items),
+                file_name="我的志愿表.html", mime="text/html",
+                use_container_width=True, help="下载后用浏览器打开，按 Ctrl/⌘+P 另存为 PDF")
     with cols[3]:
         with st.popover("👀 预览", use_container_width=True):
             st.markdown(md)

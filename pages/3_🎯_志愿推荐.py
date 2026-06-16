@@ -109,7 +109,10 @@ with cols[1]:
             file_name="志愿推荐报告.docx", use_container_width=True,
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
     else:
-        st.button("Word（未安装）", disabled=True, use_container_width=True)
+        st.download_button(
+            "⬇️ Word(.rtf)", report.build_rtf_report(student, buckets),
+            file_name="志愿推荐报告.rtf", mime="application/rtf",
+            use_container_width=True, help="RTF 格式，Word/WPS 可直接打开")
 with cols[2]:
     if report.pdf_available():
         st.download_button(
@@ -117,13 +120,13 @@ with cols[2]:
             file_name="志愿推荐报告.pdf", mime="application/pdf",
             use_container_width=True)
     else:
-        st.button("PDF（未安装）", disabled=True, use_container_width=True)
+        st.download_button(
+            "⬇️ PDF(网页版)", report.build_html_report(student, buckets),
+            file_name="志愿推荐报告.html", mime="text/html",
+            use_container_width=True, help="下载后用浏览器打开，按 Ctrl/⌘+P 另存为 PDF")
 with cols[3]:
     with st.popover("👀 预览", use_container_width=True):
         st.markdown(md)
-if not (report.docx_available() and report.pdf_available()):
-    st.caption("💡 Word/PDF 按钮置灰是因为本机未装导出库。在项目目录执行 "
-               "`pip install -e .`（或 `pip install python-docx reportlab`）后重启即可。")
 
 st.divider()
 
