@@ -41,6 +41,7 @@ xcopy /e /i /y pages "%DIST%\pages" >nul
 xcopy /e /i /y data "%DIST%\data" >nul
 if exist .streamlit xcopy /e /i /y .streamlit "%DIST%\.streamlit" >nul
 copy /y "packaging\启动应用.bat" "%DIST%\启动应用.bat" >nul
+if exist "怎么打开.txt" copy /y "怎么打开.txt" "%DIST%\怎么打开.txt" >nul
 
 echo [6/6] 完成！
 echo.
