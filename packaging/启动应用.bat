@@ -9,7 +9,7 @@ if not exist "app.py" if exist "..\app.py" cd ..
 rem 优先用随包内嵌的便携 Python；没有则用系统 Python
 set "PY=%~dp0runtime\python.exe"
 if not exist "%PY%" set "PY=python"
-set "LOG=%~dp0启动日志.txt"
+set "LOG=%CD%\启动日志.txt"
 
 rem 跳过 Streamlit 首次运行的"邮箱"引导提示（避免客户双击后卡住）
 if not exist "%USERPROFILE%\.streamlit" mkdir "%USERPROFILE%\.streamlit" >nul 2>nul
@@ -17,13 +17,6 @@ if not exist "%USERPROFILE%\.streamlit\credentials.toml" (
     > "%USERPROFILE%\.streamlit\credentials.toml" echo [general]
     >> "%USERPROFILE%\.streamlit\credentials.toml" echo email = ""
 )
-
-echo ============================================
-echo    高考志愿推荐系统  正在启动，请稍候...
-echo    首次启动较慢（约 10~30 秒），请耐心等待
-echo    使用期间请不要关闭本黑色窗口
-echo ============================================
-echo.
 
 rem ===== 环境自检：关键库能否导入（捕获缺 DLL / 依赖不全等问题）=====
 "%PY%" -c "import streamlit, pandas, numpy, plotly" 2>"%LOG%"
@@ -41,12 +34,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
-rem 延迟后自动打开浏览器；用 127.0.0.1 规避部分浏览器（如360）对 localhost 的拦截
-start "" /b cmd /c "timeout /t 8 >nul & start http://127.0.0.1:8501"
+echo ============================================
+echo    高考志愿推荐系统  正在启动，请稍候...
+echo    首次启动较慢（约 10~30 秒），稍等浏览器会自动打开
+echo    若没自动打开，手动访问： http://127.0.0.1:8501
+echo    使用期间请不要关闭本黑色窗口
+echo ============================================
+echo.
 
-"%PY%" -m streamlit run app.py --server.headless true --server.port 8501 --browser.gatherUsageStats false
+rem 后台延时打开浏览器（用 PowerShell，独立进程、不影响主程序；127.0.0.1 规避360内网拦截）
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 12; Start-Process 'http://127.0.0.1:8501'" >nul 2>nul
+
+rem 启动服务（前台运行；输出同时留存到 启动日志.txt 便于排错）
+"%PY%" -m streamlit run app.py --server.headless true --server.port 8501 --browser.gatherUsageStats false 2>>"%LOG%"
 
 echo.
-echo 程序已退出。若上方有红色报错，请把本窗口内容截图反馈。
-echo （如浏览器没自动打开，手动访问： http://127.0.0.1:8501 ）
+echo 程序已退出。若启动异常，请把同目录的 “启动日志.txt” 截图发技术支持。
 pause >nul
