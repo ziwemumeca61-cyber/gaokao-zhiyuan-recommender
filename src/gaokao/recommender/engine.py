@@ -14,8 +14,13 @@ def recommend(
     data_dir: str | None = None,
     per_tier: int = 10,
     weights: dict[str, float] | None = None,
+    max_per_school: int = 2,
 ) -> dict[str, list[Recommendation]]:
-    """返回按 冲/稳/保 分组、组内按综合分降序的推荐结果。"""
+    """返回按 冲/稳/保 分组、组内按综合分降序的推荐结果。
+
+    max_per_school：每档内同一院校最多保留几个专业（默认 2），让列表覆盖更多院校、
+    避免被某校一堆专业刷屏；候选院校不足时自动回填，仍尽量凑满 per_tier。
+    """
     schools = load_schools(data_dir)
     majors = load_majors(data_dir)
     stats = aggregate_cached(student.province, student.subject_type, data_dir)
@@ -59,9 +64,32 @@ def recommend(
         ))
 
     for tier in TIERS:
-        buckets[tier].sort(key=lambda r: r.composite_score, reverse=True)
-        buckets[tier] = buckets[tier][:per_tier]
+        ranked = sorted(buckets[tier], key=lambda r: r.composite_score, reverse=True)
+        buckets[tier] = _diversify(ranked, per_tier, max_per_school)
     return buckets
+
+
+def _diversify(ranked: list[Recommendation], per_tier: int,
+               max_per_school: int) -> list[Recommendation]:
+    """按综合分降序取前 per_tier，但限制每校最多 max_per_school 个专业；
+    若去重后不足额，再按分数回填被限的项，保证尽量凑满。"""
+    if max_per_school <= 0:
+        return ranked[:per_tier]
+    from collections import Counter  # noqa: PLC0415
+    per_school: Counter = Counter()
+    picked: list[Recommendation] = []
+    overflow: list[Recommendation] = []
+    for r in ranked:
+        if per_school[r.school.id] < max_per_school:
+            picked.append(r)
+            per_school[r.school.id] += 1
+        else:
+            overflow.append(r)
+        if len(picked) >= per_tier:
+            return picked
+    # 院校不够多导致没凑满：用被限的高分项回填
+    picked.extend(overflow[: per_tier - len(picked)])
+    return picked[:per_tier]
 
 
 def _build_reasons(student, school, major, stat, tier, probability,
