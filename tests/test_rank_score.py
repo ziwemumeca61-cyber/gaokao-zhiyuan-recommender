@@ -88,7 +88,7 @@ def test_segment_provinces_include_non_mock_province():
 def test_seed_anchors_match_official_values():
     cases = [
         ("河北", "物理", 600, 27073), ("江苏", "历史", 600, 5796),
-        ("广东", "物理", 600, 26988), ("四川", "历史", 600, 4584),
+        ("广东", "物理", 600, 30891), ("四川", "历史", 600, 4584),  # 广东已更新为2026
     ]
     for province, subject, score, rank in cases:
         t = rank_score.build_table(province, subject)
