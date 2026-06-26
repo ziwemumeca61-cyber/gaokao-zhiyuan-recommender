@@ -64,16 +64,20 @@ with sc2:
         conv = table.rank_for_score(score)
         est = conv.value
         auto = st.checkbox("📊 用分数自动估位次", value=True,
-                           help="按本省一分一段把分数换算成位次；取消勾选可手动填写。")
+                           help="按本省一分一段把分数换算成位次；取消勾选可手动填写。"
+                                "换算采用『同分同位次·累计口径』——同分的人位次都记为该分的累计人数，"
+                                "与院校公布的录取位次同一把尺子，可直接比较。")
         if auto:
             rank = est
             st.caption(f"约第 **{est:,}** 名"
                        + ("（超出实测档位、按趋势外推）" if conv.clamped else "（基于实测一分一段）")
-                       + "　位次比分数更准，是推荐核心依据。")
+                       + "　同分同位次·累计口径，与院校录取位次同尺度。")
         else:
             rank = st.number_input(
                 "全省位次", min_value=1, max_value=900000,
-                value=int(existing.rank) if existing and existing.rank > 0 else est)
+                value=int(existing.rank) if existing and existing.rank > 0 else est,
+                help="填官方成绩单/排位表上的位次最准（已是同分同位次·累计口径，"
+                     "与院校录取位次同尺度）；不确定就勾选上方『用分数自动估位次』。")
     else:
         rank = st.number_input(
             "全省位次", min_value=1, max_value=900000,
