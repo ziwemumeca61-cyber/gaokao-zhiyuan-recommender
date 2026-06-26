@@ -98,7 +98,7 @@ def test_seed_anchors_match_official_values():
 def test_3plus3_provinces_use_zonghe_subject():
     """3+3 省份不分物理/历史，应有'综合'种子且锚点命中官方值。"""
     cases = [
-        ("山东", 600, 25061), ("浙江", 660, 6995), ("上海", 600, 1250),
+        ("山东", 600, 30192), ("浙江", 660, 6995), ("上海", 600, 1250),  # 山东已更新为2026
         ("海南", 800, 105), ("北京", 600, 11883), ("天津", 550, 25874),
     ]
     for province, score, rank in cases:
