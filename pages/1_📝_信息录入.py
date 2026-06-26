@@ -81,6 +81,13 @@ with sc2:
             help="位次比分数更稳定，是志愿推荐的核心依据")
         st.caption("该省暂无一分一段换算表，请手动填写位次。")
 
+# 控制线定位：直观告诉考生超本科线/特控线多少分
+from gaokao import control_lines  # noqa: E402
+
+_cl = control_lines.describe(province, subject_type, int(score))
+if _cl:
+    st.info(f"📏 {province}·{subject_type} {int(score)}分　{_cl}")
+
 with st.form("student_form"):
     st.markdown("**偏好（可选，用于个性化排序）**")
     c3, c4, c5 = st.columns(3)

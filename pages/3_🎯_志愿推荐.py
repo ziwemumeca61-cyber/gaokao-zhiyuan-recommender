@@ -30,6 +30,12 @@ if student is None:
 
 render_scope_banner(student)
 
+from gaokao import control_lines  # noqa: E402
+
+_cl = control_lines.describe(student.province, student.subject_type, int(student.score))
+if _cl:
+    st.info(f"📏 你 {int(student.score)}分　{_cl}")
+
 c1, c2 = st.columns([2, 1])
 with c1:
     mode = st.radio("推荐方式", ["🎯 综合推荐", "🧭 按兴趣推荐", "🔥 热门推荐"],
