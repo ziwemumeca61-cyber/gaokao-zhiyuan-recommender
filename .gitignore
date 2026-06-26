@@ -224,3 +224,6 @@ data/real_local/
 # 原始资料包：体积大且导入后即无用，不入库（避免撑大仓库历史）。
 # 投放到 data/incoming/ 后由 scripts/import_*.py 提取进 data/real 与 data/segments。
 data/incoming/*.zip
+
+# 运行时日志（启动应用.bat 在仓库目录直接运行时会生成），不入库
+启动日志.txt
