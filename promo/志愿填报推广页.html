@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高考志愿 · AI智能推荐</title>
+<meta property="og:title" content="高考志愿 · AI智能推荐｜前10名免费">
+<meta property="og:description" content="前沿AI打造，23省一分一段·30省控制线·冲稳保+录取概率，按兴趣/家庭/读研意向个性化推荐。">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#0d1b3e; color:#fff; line-height:1.6;
+    display:flex; justify-content:center;
+  }
+  .poster {
+    width:100%; max-width:430px; min-height:100vh;
+    background:linear-gradient(160deg,#1a2a6c 0%,#2a4d8f 45%,#3b6fb5 100%);
+    position:relative; overflow:hidden; padding:0 0 40px;
+  }
+  .poster::before {
+    content:""; position:absolute; top:-120px; right:-120px;
+    width:320px; height:320px; border-radius:50%;
+    background:radial-gradient(circle,rgba(255,209,102,.25),transparent 70%);
+  }
+  /* 顶部 */
+  .top { padding:38px 28px 0; position:relative; z-index:1; }
+  .badge {
+    display:inline-block; font-size:13px; letter-spacing:1px;
+    background:rgba(255,209,102,.18); color:#ffd166;
+    border:1px solid rgba(255,209,102,.5); border-radius:20px;
+    padding:5px 14px; margin-bottom:20px;
+  }
+  h1 { font-size:34px; font-weight:800; letter-spacing:1px; line-height:1.25; }
+  h1 .hl { color:#ffd166; }
+  .sub { margin-top:14px; font-size:16px; color:#cdd9f0; }
+  .sub b { color:#fff; }
+  /* 一句钩子 */
+  .hook {
+    margin:26px 28px 0; padding:16px 18px;
+    background:rgba(255,255,255,.08); border-left:4px solid #ffd166;
+    border-radius:8px; font-size:15px; color:#e8eefb;
+  }
+  /* 卡片 */
+  .cards { padding:24px 22px 0; position:relative; z-index:1; }
+  .card {
+    background:rgba(255,255,255,.10); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.14); border-radius:14px;
+    padding:16px 16px; margin-bottom:12px; display:flex; align-items:flex-start; gap:13px;
+  }
+  .card .ico { font-size:26px; line-height:1.2; flex-shrink:0; }
+  .card .t { font-size:16px; font-weight:700; margin-bottom:2px; }
+  .card .d { font-size:13.5px; color:#c2cfe8; }
+  /* 个性化高亮卡 */
+  .card.key { background:linear-gradient(135deg,rgba(255,209,102,.22),rgba(255,209,102,.06)); border-color:rgba(255,209,102,.45); }
+  .card.key .t { color:#ffd166; }
+  /* 免费条 */
+  .free {
+    margin:8px 22px 0; text-align:center;
+    background:linear-gradient(90deg,#ff6b6b,#ffa94d);
+    border-radius:14px; padding:18px 16px; box-shadow:0 8px 24px rgba(255,107,107,.35);
+  }
+  .free .big { font-size:24px; font-weight:800; letter-spacing:1px; }
+  .free .small { font-size:13px; opacity:.95; margin-top:3px; }
+  /* CTA */
+  .cta { margin:22px 28px 0; text-align:center; }
+  .qrbox {
+    display:inline-block; background:#fff; color:#1a2a6c;
+    border-radius:16px; padding:16px; width:180px;
+  }
+  .qrph {
+    width:148px; height:148px; border:2px dashed #9bb0d6; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:13px; color:#7488b5; padding:8px;
+  }
+  .qrtip { font-size:13px; color:#1a2a6c; font-weight:700; margin-top:10px; }
+  .cta .line { margin-top:18px; font-size:15px; color:#e8eefb; }
+  .cta .line b { color:#ffd166; }
+  /* 底部说明 */
+  .foot {
+    margin:26px 28px 0; font-size:11px; color:#8fa1c7; text-align:center; line-height:1.7;
+  }
+  .tags { margin-top:8px; }
+  .tags span {
+    display:inline-block; font-size:11px; color:#aebbd8;
+    border:1px solid rgba(255,255,255,.18); border-radius:12px;
+    padding:2px 9px; margin:3px 3px 0;
+  }
+</style>
+</head>
+<body>
+  <div class="poster">
+    <div class="top">
+      <span class="badge">⚡ 前沿AI（Claude）打造</span>
+      <h1>高考志愿<br><span class="hl">AI 智能推荐</span></h1>
+      <p class="sub">分数是死的，志愿是活的。<br><b>同样的分，会填的能多赚一个档次。</b></p>
+    </div>
+
+    <div class="hook">
+      🎓 寒窗十二年，最后三天别栽在志愿上——<br>别让 1 分白考，也别选个将来后悔的专业。
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="ico">📊</div>
+        <div><div class="t">2026年 23省 一分一段</div>
+        <div class="d">输入分数，实时换算成全省位次，跨年可比</div></div>
+      </div>
+      <div class="card">
+        <div class="ico">📏</div>
+        <div><div class="t">30省 本科线 / 特控线</div>
+        <div class="d">超线多少分、够不够特殊批次，一目了然</div></div>
+      </div>
+      <div class="card">
+        <div class="ico">🎯</div>
+        <div><div class="t">冲 · 稳 · 保 + 录取概率</div>
+        <div class="d">概率经过校准——说 70%，实际录取率也接近 70%</div></div>
+      </div>
+      <div class="card key">
+        <div class="ico">🧭</div>
+        <div><div class="t">真正"懂TA"的个性化推荐</div>
+        <div class="d">结合<b>兴趣性格、家庭经济、要不要读研、想考公还是进企业</b>，量身推专业，不是千人一面</div></div>
+      </div>
+    </div>
+
+    <div class="free">
+      <div class="big">🎁 前 10 名 免 费</div>
+      <div class="small">真心想帮几个孩子 · 名额有限 · 越早越好</div>
+    </div>
+
+    <div class="cta">
+      <div class="qrbox">
+        <div class="qrph">在此粘贴你的<br>微信二维码</div>
+        <div class="qrtip">长按 / 扫码加我</div>
+      </div>
+      <div class="line">或私信扣 <b>"志愿"</b>，我帮你排明白</div>
+    </div>
+
+    <div class="foot">
+      数据来源各省教育考试院公开统计，仅供志愿参考，不构成录取保证。<br>
+      最终录取以官方投档结果为准，请结合自身意愿审慎决策。
+      <div class="tags">
+        <span>分数→位次</span><span>冲稳保</span><span>录取概率</span>
+        <span>兴趣测评</span><span>家庭情况</span><span>读研意向</span><span>AI解读</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
