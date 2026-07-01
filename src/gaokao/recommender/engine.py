@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from .. import electives
-from ..data_loader import load_admissions, load_majors, load_schools
+from ..data_loader import load_majors, load_schools
 from ..models import TIERS, Recommendation, Student
 from . import interest, ml_model, rank_based, scoring
-from .history import aggregate
+from .history import aggregate_cached
 
 
 def recommend(
@@ -14,13 +14,16 @@ def recommend(
     data_dir: str | None = None,
     per_tier: int = 10,
     weights: dict[str, float] | None = None,
+    max_per_school: int = 2,
 ) -> dict[str, list[Recommendation]]:
-    """返回按 冲/稳/保 分组、组内按综合分降序的推荐结果。"""
+    """返回按 冲/稳/保 分组、组内按综合分降序的推荐结果。
+
+    max_per_school：每档内同一院校最多保留几个专业（默认 2），让列表覆盖更多院校、
+    避免被某校一堆专业刷屏；候选院校不足时自动回填，仍尽量凑满 per_tier。
+    """
     schools = load_schools(data_dir)
     majors = load_majors(data_dir)
-    admissions = load_admissions(data_dir)
-
-    stats = aggregate(admissions, student.province, student.subject_type)
+    stats = aggregate_cached(student.province, student.subject_type, data_dir)
     buckets: dict[str, list[Recommendation]] = {t: [] for t in TIERS}
 
     # 第一遍：筛出冲稳保区间内、且满足选科要求的候选（概率稍后批量计算）
@@ -46,7 +49,7 @@ def recommend(
 
     for (tier, school, major, stat), (probability, prob_low, prob_high) in zip(
             picked, intervals):
-        confidence = ml_model.confidence_label(prob_low, prob_high)
+        confidence = ml_model.confidence_label(stat.rank_cv, stat.years, stat.trend)
         interest_match = interest.match(student.riasec, major.riasec_code)
         composite = scoring.composite(
             student, school, major, probability, interest_match, weights)
@@ -61,9 +64,32 @@ def recommend(
         ))
 
     for tier in TIERS:
-        buckets[tier].sort(key=lambda r: r.composite_score, reverse=True)
-        buckets[tier] = buckets[tier][:per_tier]
+        ranked = sorted(buckets[tier], key=lambda r: r.composite_score, reverse=True)
+        buckets[tier] = _diversify(ranked, per_tier, max_per_school)
     return buckets
+
+
+def _diversify(ranked: list[Recommendation], per_tier: int,
+               max_per_school: int) -> list[Recommendation]:
+    """按综合分降序取前 per_tier，但限制每校最多 max_per_school 个专业；
+    若去重后不足额，再按分数回填被限的项，保证尽量凑满。"""
+    if max_per_school <= 0:
+        return ranked[:per_tier]
+    from collections import Counter  # noqa: PLC0415
+    per_school: Counter = Counter()
+    picked: list[Recommendation] = []
+    overflow: list[Recommendation] = []
+    for r in ranked:
+        if per_school[r.school.id] < max_per_school:
+            picked.append(r)
+            per_school[r.school.id] += 1
+        else:
+            overflow.append(r)
+        if len(picked) >= per_tier:
+            return picked
+    # 院校不够多导致没凑满：用被限的高分项回填
+    picked.extend(overflow[: per_tier - len(picked)])
+    return picked[:per_tier]
 
 
 def _build_reasons(student, school, major, stat, tier, probability,
@@ -92,8 +118,9 @@ def _build_reasons(student, school, major, stat, tier, probability,
         reasons.append("近年录取位次波动较大（疑似大小年），录取概率不确定性偏高")
     elif stat.trend > 0.10:
         reasons.append("近年录取位次走高、竞争加剧，注意风险")
-    if stat.plan_ratio >= 1.2:
-        reasons.append(f"今年招生计划较往年增加（约 {stat.plan_ratio:.1f} 倍），分数线可能走低")
-    elif stat.plan_ratio <= 0.8:
-        reasons.append("今年招生计划较往年减少，分数线可能走高，需谨慎")
+    # 仅在招生计划体量够大（≥10）时提示扩缩招——小专业计划多为个位数，其比值噪声大、不可靠
+    if stat.total_plan >= 10 and stat.plan_ratio >= 1.2:
+        reasons.append(f"近一年招生计划明显多于前几年（约 {stat.plan_ratio:.1f} 倍），录取线或有走低趋势")
+    elif stat.total_plan >= 10 and stat.plan_ratio <= 0.8:
+        reasons.append("近一年招生计划较前几年减少，录取线或走高，需谨慎")
     return reasons

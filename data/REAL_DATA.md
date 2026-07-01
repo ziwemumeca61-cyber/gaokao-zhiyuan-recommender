@@ -92,3 +92,30 @@ python -m gaokao.data_import 院校.csv 专业.csv 录取.csv --out data/real
 - `admission_scores` 引用的 school_id/major_id 必须存在；
 - `subject_type` 仅限 物理/历史；分数 0~750、位次为正；
 - 不满足的脏行在导入时被清洗并计数，结构性错误则整体拒绝写入。
+
+## 2026 数据更新备忘（出分后照此补充）
+
+### 时间点
+- **一分一段表**：各省随高考出分公布，约 **6/23–25**（普通类要等出分，之前没有）。
+- **招生计划**：填报志愿前由各省考试院发布《招生计划专刊》，约 **6 月下旬**。
+- 位次跨年可比，故出分前用 2022–2025 历史即可正常推荐；2026 数据到手后补充会更准。
+
+### 去哪拿（二选一）
+1. **资料包（推荐）**：和 2025 同款的"省份志愿填报资料包"，卖家通常出分后几天更新
+   "2026 版"。每个省一个 zip，内含 `专业录取分数 / 招生计划 / 一分一段` 等 xlsx。
+2. **官方**：各省教育考试院官网《招生计划专刊》《成绩分段统计表》；教育部阳光高考平台
+   `gaokao.chsi.com.cn`；分省分专业计划也见各高校本科招生网。
+
+### 怎么并进系统（把 zip 放 `data/incoming/` 后依次跑）
+```bash
+python scripts/import_province_packs.py   # 录取分数/位次/录取人数 -> data/real（含分区、meta）
+python scripts/import_plans.py            # 真实招生计划 -> 修正 plan_count（扩缩招信号）
+python scripts/extract_segments.py        # 一分一段 -> data/segments（分数⇄位次换算种子）
+```
+- 脚本会自动去重并入、刷新 `admissions_meta.json` / 分区 / `stats/` 预聚合。
+- 验证：`python scripts/backtest.py` 看精度；`pytest tests/test_backtest.py` 守底线。
+- `data/incoming/*.zip` 已被 gitignore，导入后可删原始包。
+- 兼容两种包结构（内嵌 zip 的"先保存才能用"版 / 文件直放的"永久更新"版）。
+
+> 注：`scripts/import_*.py` 与 `extract_segments.py` 均接受可选的 incoming 目录参数，
+> 默认 `data/incoming/`；不覆盖已有真实一分一段种子（`extract_segments.py --force` 才覆盖）。

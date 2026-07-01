@@ -13,10 +13,13 @@ from __future__ import annotations
 import math
 
 _SQRT2 = math.sqrt(2.0)
-_BASE_SIGMA = 0.22   # 缺历史波动信息时的先验相对波动（对数位次）
-_PLAN_SIGMA = 1.0    # 招生计划越少，录取线越不稳定
-_TREND_SIGMA = 0.6   # 近年趋势越陡（大小年），不确定性越大
-_DEFAULT_SIGMA = 0.35
+# σ 标定自留出法回测（用 ≤2024 预测 2025）：对数位次预测残差的真实标准差≈0.24。
+# 旧值（base0.22/plan1.0/trend0.6）使平均 σ≈0.74、概率被压向 50%，校准误差达 19%；
+# 现降到与真实波动相当，校准误差降至约 4%。详见 scripts/backtest.py。
+_BASE_SIGMA = 0.20   # 历史波动信息不足时的先验/下限（对数位次）
+_PLAN_SIGMA = 0.15   # 招生计划越少略增不确定性（小项，避免主导）
+_TREND_SIGMA = 0.4   # 近年趋势越陡（大小年），不确定性越大
+_DEFAULT_SIGMA = 0.22
 
 
 def _phi(x: float) -> float:
@@ -25,9 +28,9 @@ def _phi(x: float) -> float:
 
 
 def _sigma(rank_cv: float, years: int, plan: int, trend: float = 0.0) -> float:
-    """估计录取线在对数位次上的波动 σ：历史波动 + 小样本膨胀 + 计划 + 趋势。"""
+    """估计录取线在对数位次上的波动 σ：历史波动(下限 _BASE_SIGMA) + 计划 + 趋势。"""
     hist = rank_cv if years >= 2 else _BASE_SIGMA
-    hist = max(hist, _BASE_SIGMA / math.sqrt(max(years, 1)))
+    hist = max(hist, _BASE_SIGMA)
     plan_term = _PLAN_SIGMA / math.sqrt(max(plan, 1))
     trend_term = _TREND_SIGMA * abs(trend)
     return math.sqrt(hist * hist + plan_term * plan_term + trend_term * trend_term)
@@ -40,9 +43,12 @@ def predict_prob(student_rank: int, ref_rank: int, sigma: float = _DEFAULT_SIGMA
 
 
 def _proj_ref(ref_rank: int, plan_ratio: float) -> int:
-    """按招生计划变化修正参考位次：扩招(plan_ratio>1)→线走低→参考位次变大(更好考)。"""
-    factor = min(1.18, max(0.85, plan_ratio ** 0.4))
-    return max(1, round(ref_rank * factor))
+    """投影参考位次。
+
+    注：曾按 plan_ratio 修正(扩招→线走低)，但留出法回测显示——分省分专业的招生计划
+    多为个位数、其年度比值噪声极大——该修正反而使位次预测变差(中位 9.8%→13.2%)，
+    故不再据此平移参考线；plan_ratio 仅用于不确定性(σ)与文案提示。"""
+    return max(1, ref_rank)
 
 
 def predict_intervals(
@@ -78,8 +84,24 @@ def predict_interval(
         student_rank, [(ref_rank, trend, rank_cv, years, plan, plan_ratio)])[0]
 
 
-def confidence_label(low: float, high: float) -> str:
-    """按区间宽度给"把握度"标签：越窄越有把握。"""
+def confidence_label(rank_cv: float, years: int, trend: float = 0.0) -> str:
+    """把握度 = 对该专业录取线预测的**可靠度**，取决于历史年数与录取线波动，
+    与考生处在冲/稳/保无关（避免"稳但把握度低"的困惑）。
+
+    年份足、线稳 → 高；只有一年或波动/大小年明显 → 低。
+    """
+    if years <= 1:
+        return "低"
+    vol = math.sqrt(rank_cv * rank_cv + (0.6 * abs(trend)) ** 2)
+    if years >= 3 and vol <= 0.18:
+        return "高"
+    if vol <= 0.35:
+        return "中"
+    return "低"
+
+
+def _confidence_by_width(low: float, high: float) -> str:
+    """（旧）按概率区间宽度给把握度，保留备用。"""
     width = high - low
     if width <= 0.18:
         return "高"

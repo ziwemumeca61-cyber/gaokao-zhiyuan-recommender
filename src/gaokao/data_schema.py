@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -59,13 +60,32 @@ class ValidationResult:
         self.warnings.append(msg)
 
 
+def resolve_table(base: str | Path, fname: str) -> Path:
+    """返回实际存在的表路径：优先明文 fname，其次 gzip 的 fname.gz（大数据集压缩存储）。"""
+    base = Path(base)
+    plain = base / fname
+    if plain.exists():
+        return plain
+    gz = base / (fname + ".gz")
+    if gz.exists():
+        return gz
+    return plain  # 都不存在也返回明文形式，供"是否存在"判断
+
+
+def _open_text(path: Path, encoding: str):
+    """按需透明解压：.gz 用 gzip 文本模式打开，否则普通打开。"""
+    if str(path).endswith(".gz"):
+        return gzip.open(path, "rt", encoding=encoding, newline="")
+    return path.open("r", encoding=encoding, newline="")
+
+
 def read_rows(path: str | Path) -> list[dict]:
-    """编码鲁棒地读取 CSV 为字典行。依次尝试 utf-8-sig / gb18030 / gbk / latin-1。"""
+    """编码鲁棒地读取 CSV（支持 .gz）为字典行。依次尝试 utf-8-sig / gb18030 / gbk / latin-1。"""
     path = Path(path)
     last_err: Exception | None = None
     for enc in ("utf-8-sig", "gb18030", "gbk", "latin-1"):
         try:
-            with path.open("r", encoding=enc, newline="") as f:
+            with _open_text(path, enc) as f:
                 rows = list(csv.DictReader(f))
             # 去掉表头/字段名的首尾空白
             return [{(k.strip() if k else k): (v.strip() if isinstance(v, str) else v)
@@ -92,7 +112,7 @@ def validate_dataset(data_dir: str | Path) -> ValidationResult:
     # 1) 文件存在 + 必需列齐全
     tables: dict[str, list[dict]] = {}
     for fname in DATASET_FILES:
-        fpath = base / fname
+        fpath = resolve_table(base, fname)
         if not fpath.exists():
             res.error(f"缺少文件：{fname}")
             continue

@@ -23,7 +23,7 @@ st.set_page_config(page_title=branding.get("app_title"),
 def render_home() -> None:
     """引导式首页：数据徽章 + 三步走 + 动态下一步。"""
     from gaokao.data_loader import (  # noqa: PLC0415
-        active_source, available_provinces, load_admissions, load_majors, load_schools,
+        active_source, admission_count, available_provinces, load_majors, load_schools,
     )
     from gaokao.ui_helpers import ensure_data, get_student  # noqa: PLC0415
 
@@ -40,12 +40,43 @@ def render_home() -> None:
         st.success(
             f"✅ 当前为**真实数据**（{'、'.join(available_provinces())}）："
             f"{len(load_schools())} 所院校 · {len(load_majors())} 个专业 · "
-            f"{len(load_admissions()):,} 条录取记录")
+            f"{admission_count():,} 条录取记录")
     else:
         st.info("🧪 当前为**演示数据**（模拟），仅供体验；导入真实数据后自动切换"
                 "（见 ⚙️ 数据源）。")
 
     student = get_student()
+
+    # 醒目主按钮：新手只需认准这一个
+    st.divider()
+    if not student:
+        st.markdown("#### 第一次来？认准下面这个按钮就行 👇")
+        b1, b2 = st.columns([2, 1])
+        with b1:
+            if st.button("🚀 开始：填我的高考信息（约 1 分钟）",
+                         type="primary", use_container_width=True):
+                st.switch_page(info_page)
+        with b2:
+            if st.button("🎲 先用示例考生体验", use_container_width=True):
+                from gaokao.data_loader import available_provinces, available_subjects  # noqa: PLC0415
+                from gaokao.models import Student  # noqa: PLC0415
+                from gaokao.ui_helpers import set_student  # noqa: PLC0415
+
+                prov = available_provinces()[0]
+                subs = available_subjects(prov) or ["物理"]
+                sub = subs[0]
+                set_student(Student(
+                    score=573, rank=50000, province=prov, subject_type=sub,
+                    electives=["物理", "化学", "生物"] if sub == "综合" else []))
+                st.switch_page(recommend_page)
+    elif not st.session_state.get("recommendations"):
+        if st.button(f"🎯 下一步：看 {student.province}·{student.subject_type}·{student.score}分 的冲稳保推荐",
+                     type="primary", use_container_width=True):
+            st.switch_page(recommend_page)
+    else:
+        if st.button("❤️ 下一步：整理 / 导出我的志愿表",
+                     type="primary", use_container_width=True):
+            st.switch_page(wishlist_page)
 
     st.divider()
     st.markdown("### 跟着三步走，志愿表轻松搞定")
@@ -65,32 +96,6 @@ def render_home() -> None:
         st.caption("心愿单排序 · 院校对比 · 一键导出")
         st.markdown("✅ 可整理" if st.session_state.get("wishlist") else "⬜ 先把心仪专业加入心愿单")
         st.page_link(wishlist_page, label="我的志愿表", icon="❤️")
-
-    st.divider()
-    if not student:
-        st.markdown("#### 👉 现在开始")
-        cols = st.columns(2)
-        with cols[0]:
-            st.page_link(info_page, label="第一步：填写我的高考信息", icon="📝")
-        with cols[1]:
-            if st.button("🎲 没空填？用示例考生一键体验", use_container_width=True):
-                from gaokao.data_loader import available_provinces, available_subjects  # noqa: PLC0415
-                from gaokao.models import Student  # noqa: PLC0415
-                from gaokao.ui_helpers import set_student  # noqa: PLC0415
-
-                prov = available_provinces()[0]
-                subs = available_subjects(prov) or ["物理"]
-                sub = subs[0]
-                set_student(Student(
-                    score=573, rank=50000, province=prov, subject_type=sub,
-                    electives=["物理", "化学", "生物"] if sub == "综合" else []))
-                st.switch_page(recommend_page)
-    elif not st.session_state.get("recommendations"):
-        st.markdown(f"#### 👋 {student.province}·{student.subject_type} · {student.score} 分 考生，欢迎回来")
-        st.page_link(recommend_page, label="下一步：查看我的冲稳保推荐", icon="🎯")
-    else:
-        st.markdown("#### 🎉 推荐已生成，去整理你的志愿表吧")
-        st.page_link(wishlist_page, label="下一步：整理 / 导出我的志愿表", icon="❤️")
 
     st.divider()
     st.markdown("##### 🧰 辅助工具")
@@ -124,9 +129,9 @@ datasource_page = st.Page("pages/11_⚙️_数据源.py", title="数据源", ico
 
 nav = st.navigation({
     "🏠 开始": [home_page, info_page],
-    "🎯 推荐与选校": [recommend_page, cards_page, wishlist_page, compare_page],
-    "🧰 查询工具": [assess_page, rankscore_page, school_page, encyclo_page,
-                dashboard_page, ai_page],
+    "🎯 推荐与选校": [recommend_page, cards_page, wishlist_page, dashboard_page,
+                compare_page],
+    "🧰 查询工具": [assess_page, rankscore_page, school_page, encyclo_page, ai_page],
     "⚙️ 设置": [datasource_page],
 })
 nav.run()

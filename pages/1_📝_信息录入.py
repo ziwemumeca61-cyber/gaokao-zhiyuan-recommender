@@ -14,6 +14,7 @@ from gaokao.data_loader import (  # noqa: E402
 )
 from gaokao.electives import ELECTIVE_SUBJECTS  # noqa: E402
 from gaokao.models import Student  # noqa: E402
+from gaokao import rank_score  # noqa: E402
 from gaokao.ui_helpers import ensure_data, get_student  # noqa: E402
 
 st.title("📝 信息录入")
@@ -51,16 +52,47 @@ if subject_type == "综合":
     if len(electives) != 3:
         st.caption("⚠️ 请选满 3 门；不选则不按选科要求过滤，可能推到你报不了的专业。")
 
-with st.form("student_form"):
-    c1, c2 = st.columns(2)
-    with c1:
-        score = st.number_input("高考分数 *", min_value=200, max_value=900,
-                                value=int(existing.score) if existing else 600)
-    with c2:
-        rank = st.number_input("全省位次 *", min_value=1, max_value=900000,
-                               value=int(existing.rank) if existing else 15000,
-                               help="位次比分数更稳定，是志愿推荐的核心依据")
+# 分数与位次放表单外：输入分数即按本省一分一段实时估算位次（位次是推荐的核心依据）
+st.markdown("**分数与位次 ***")
+table = rank_score.build_table(province, subject_type)
+sc1, sc2 = st.columns(2)
+with sc1:
+    score = st.number_input("高考分数", min_value=200, max_value=900,
+                            value=int(existing.score) if existing else 600)
+with sc2:
+    if table is not None:
+        conv = table.rank_for_score(score)
+        est = conv.value
+        auto = st.checkbox("📊 用分数自动估位次", value=True,
+                           help="按本省一分一段把分数换算成位次；取消勾选可手动填写。"
+                                "换算采用『同分同位次·累计口径』——同分的人位次都记为该分的累计人数，"
+                                "与院校公布的录取位次同一把尺子，可直接比较。")
+        if auto:
+            rank = est
+            st.caption(f"约第 **{est:,}** 名"
+                       + ("（超出实测档位、按趋势外推）" if conv.clamped else "（基于实测一分一段）")
+                       + "　同分同位次·累计口径，与院校录取位次同尺度。")
+        else:
+            rank = st.number_input(
+                "全省位次", min_value=1, max_value=900000,
+                value=int(existing.rank) if existing and existing.rank > 0 else est,
+                help="填官方成绩单/排位表上的位次最准（已是同分同位次·累计口径，"
+                     "与院校录取位次同尺度）；不确定就勾选上方『用分数自动估位次』。")
+    else:
+        rank = st.number_input(
+            "全省位次", min_value=1, max_value=900000,
+            value=int(existing.rank) if existing else 15000,
+            help="位次比分数更稳定，是志愿推荐的核心依据")
+        st.caption("该省暂无一分一段换算表，请手动填写位次。")
 
+# 控制线定位：直观告诉考生超本科线/特控线多少分
+from gaokao import control_lines  # noqa: E402
+
+_cl = control_lines.describe(province, subject_type, int(score))
+if _cl:
+    st.info(f"📏 {province}·{subject_type} {int(score)}分　{_cl}")
+
+with st.form("student_form"):
     st.markdown("**偏好（可选，用于个性化排序）**")
     c3, c4, c5 = st.columns(3)
     with c3:
@@ -74,10 +106,30 @@ with st.form("student_form"):
         major_prefs = st.multiselect("意向专业门类", categories,
                                      default=existing.major_prefs if existing else [])
 
+    st.markdown("**家庭与发展意向（可选，让避坑提示更懂你）**")
+    f1, f2, f3 = st.columns(3)
+    _econ_opts = ["不便透露", "一般", "宽裕"]
+    with f1:
+        family_economy = st.selectbox(
+            "家庭经济", _econ_opts,
+            index=_econ_opts.index(existing.family_economy) if (
+                existing and existing.family_economy in _econ_opts) else 0)
+    with f2:
+        accept_postgrad = st.radio(
+            "是否接受读研深造", ["接受", "暂不打算"],
+            index=0 if (not existing or existing.accept_postgrad) else 1,
+            horizontal=True)
+    with f3:
+        _intent_opts = ["还没想好", "考公考编", "进企业"]
+        career_intent = st.selectbox(
+            "毕业去向倾向", _intent_opts,
+            index=_intent_opts.index(existing.career_intent) if (
+                existing and existing.career_intent in _intent_opts) else 0)
+
     submitted = st.form_submit_button("💾 保存并生成画像", type="primary")
 
 st.page_link("pages/10_🔢_一分一段.py",
-             label="🔢 不确定分数对应的位次？用一分一段表换算", icon="🔢")
+             label="🔢 想自己核对位次 / 反查分数？打开一分一段表", icon="🔢")
 
 if submitted:
     student = Student(
@@ -85,6 +137,9 @@ if submitted:
         subject_type=subject_type, electives=list(electives),
         city_prefs=city_prefs, major_prefs=major_prefs,
         level_pref=None if level_pref == "不限" else level_pref,
+        family_economy="" if family_economy == "不便透露" else family_economy,
+        accept_postgrad=(accept_postgrad == "接受"),
+        career_intent="" if career_intent == "还没想好" else career_intent,
     )
     # 保留既有兴趣测评结果
     if existing and existing.has_assessment():

@@ -123,36 +123,67 @@ def _curated() -> dict[str, dict]:
         return {}
 
 
+def _normalize(name: str) -> str:
+    """规范化专业名：去掉括号注释与末尾的"类"，便于精确比对。"""
+    s = name.strip()
+    for sep in ("（", "("):
+        if sep in s:
+            s = s.split(sep)[0]
+    s = s.strip()
+    if len(s) > 2 and s.endswith("类"):
+        s = s[:-1]
+    return s
+
+
+def _lookup(name: str, table: dict) -> dict | None:
+    """在精选表里为专业名找最贴切条目；找不到返回 None。
+
+    只接受精确名或"整段前缀"关系（如 物理学类→物理学、护理→护理学），且较短一方≥2字，
+    取匹配最长者。**不做任意子串匹配**，避免「书法学→法学」「机械…自动化→自动化」之类误配。
+    """
+    if name in table:
+        return table[name]
+    n = _normalize(name)
+    best_len, best = 0, None
+    for cname, info in table.items():
+        c = _normalize(cname)
+        if not c:
+            continue
+        if n == c or (len(n) >= 2 and len(c) >= 2 and (n.startswith(c) or c.startswith(n))):
+            if len(c) > best_len:
+                best_len, best = len(c), info
+    return best
+
+
 def knowledge_for(name: str, category: str) -> dict:
     """返回某专业的科普字典（intro/core_courses/career_paths/industry_outlook/suits）。"""
-    cur = _curated()
-    if name in cur:
-        return cur[name]
-    # 模糊匹配：精选名是专业名的子串，或反之（如"计算机类"→"计算机科学与技术"）
-    for cname, info in cur.items():
-        if cname in name or name in cname:
-            return info
+    hit = _lookup(name, _curated())
+    if hit is not None:
+        return hit
     return CATEGORY_TEMPLATES.get(category, CATEGORY_TEMPLATES["__default__"])
 
 
 def heat_for(name: str, category: str) -> float:
     """专业热度 0~100：精选专业用真实热度，其余给基准值 50（用于'热门推荐'排序）。"""
-    cur = _curated()
-    if name in cur:
-        return float(cur[name].get("heat", 50))
-    for cname, info in cur.items():
-        if cname in name or name in cname:
-            return float(info.get("heat", 50))
+    hit = _lookup(name, _curated())
+    if hit is not None:
+        return float(hit.get("heat", 50))
     return 50.0
 
 
 def detail_for(major: Major) -> dict:
-    """合并专业自带字段与知识库兜底，返回用于展示的完整科普字典。"""
-    k = knowledge_for(major.name, major.category)
+    """返回用于展示的科普字典。
+
+    内容仅来自专业自带字段或精选库（精确/前缀命中）；**未收录则各字段留空**，
+    并置 covered=False，由界面提示"暂未收录"，不再用学科门类通用模板硬凑。
+    """
+    k = _lookup(major.name, _curated()) or {}
+    intro = major.intro or k.get("intro", "")
     return {
-        "intro": major.intro or k["intro"],
-        "core_courses": major.core_courses or list(k["core_courses"]),
-        "career_paths": major.career_paths or list(k["career_paths"]),
-        "industry_outlook": major.industry_outlook or k["industry_outlook"],
-        "suits": major.suits or k["suits"],
+        "covered": bool(intro),
+        "intro": intro,
+        "core_courses": major.core_courses or list(k.get("core_courses", [])),
+        "career_paths": major.career_paths or list(k.get("career_paths", [])),
+        "industry_outlook": major.industry_outlook or k.get("industry_outlook", ""),
+        "suits": major.suits or k.get("suits", ""),
     }

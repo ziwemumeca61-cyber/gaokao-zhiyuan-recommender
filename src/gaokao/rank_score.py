@@ -17,7 +17,7 @@ import math
 from dataclasses import dataclass
 from functools import lru_cache
 
-from .data_loader import DATA_DIR, load_admissions
+from .data_loader import DATA_DIR, load_admissions_for
 
 # 真实一分一段种子数据目录（公开政府统计事实，带出处，可提交）
 SEGMENTS_DIR = DATA_DIR / "segments"
@@ -177,9 +177,8 @@ def _build_cached(province: str, subject_type: str, data_dir: str | None) -> Sco
 
     # 2) 回退：从（模拟）录取数据推导
     pairs: dict[int, list[int]] = {}
-    for rec in load_admissions(data_dir):
-        if rec.province == province and rec.subject_type == subject_type:
-            pairs.setdefault(rec.min_score, []).append(rec.min_rank)
+    for rec in load_admissions_for(province, subject_type, data_dir):
+        pairs.setdefault(rec.min_score, []).append(rec.min_rank)
     if len(pairs) < 2:
         return None
 

@@ -30,6 +30,20 @@ if student is None:
 
 render_scope_banner(student)
 
+from gaokao import control_lines  # noqa: E402
+
+_cl = control_lines.describe(student.province, student.subject_type, int(student.score))
+if _cl:
+    st.info(f"📏 你 {int(student.score)}分　{_cl}")
+
+with st.expander("📊 这些推荐有多准？（点开看依据与局限）"):
+    st.markdown(
+        "- **怎么算的**：按你的**位次**（跨年可比）把院校专业分成冲/稳/保，并给出录取概率。\n"
+        "- **准确度（留出法回测：用历年预测最近一年）**：录取线位次预测**中位误差约 9%、约 80% 落在 ±20% 内**；"
+        "录取概率经过校准——**说 70% 的实际录取率也接近 70%（校准误差约 5%）**。\n"
+        "- **局限**：今年真实录取线尚未产生；**大小年、扩招/缩招、报考扎堆**可能让个别院校专业偏差更大。\n"
+        "- **结论**：这是**科学的概率参考，不是录取保证**。请结合自身意愿，并用 **📋 志愿体检** 检查梯度是否合理。")
+
 c1, c2 = st.columns([2, 1])
 with c1:
     mode = st.radio("推荐方式", ["🎯 综合推荐", "🧭 按兴趣推荐", "🔥 热门推荐"],
@@ -109,7 +123,10 @@ with cols[1]:
             file_name="志愿推荐报告.docx", use_container_width=True,
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
     else:
-        st.button("Word（需 python-docx）", disabled=True, use_container_width=True)
+        st.download_button(
+            "⬇️ Word(.rtf)", report.build_rtf_report(student, buckets),
+            file_name="志愿推荐报告.rtf", mime="application/rtf",
+            use_container_width=True, help="RTF 格式，Word/WPS 可直接打开")
 with cols[2]:
     if report.pdf_available():
         st.download_button(
@@ -117,7 +134,10 @@ with cols[2]:
             file_name="志愿推荐报告.pdf", mime="application/pdf",
             use_container_width=True)
     else:
-        st.button("PDF（需 reportlab）", disabled=True, use_container_width=True)
+        st.download_button(
+            "⬇️ PDF(网页版)", report.build_html_report(student, buckets),
+            file_name="志愿推荐报告.html", mime="text/html",
+            use_container_width=True, help="下载后用浏览器打开，按 Ctrl/⌘+P 另存为 PDF")
 with cols[3]:
     with st.popover("👀 预览", use_container_width=True):
         st.markdown(md)
@@ -125,6 +145,26 @@ with cols[3]:
 st.divider()
 
 # ---------- 冲稳保三列 ----------
+# 录取概率怎么读：放一个问号提示，家长自己看就懂
+hc1, hc2 = st.columns([3, 1])
+with hc1:
+    st.markdown("#### 🎓 冲稳保志愿表")
+with hc2:
+    with st.popover("❓ 概率怎么读", use_container_width=True):
+        st.markdown(
+            "**录取概率 = 以你的位次报这个院校专业，估计被录取的把握。**\n\n"
+            "| 概率 | 含义 | 多属 |\n"
+            "|---|---|---|\n"
+            "| **85–99%** | 很稳，大概率录上 | 🛡️ 保 |\n"
+            "| **60–85%** | 较有希望，但不保险 | 🎯 稳 |\n"
+            "| **30–60%** | 够一够，有机会但悬 | 🚀 冲 |\n"
+            "| **<30%** | 偏难，搏一把 | 🚀 冲 |\n\n"
+            "- 概率后括号里的**区间**是不确定范围：专业大小年波动越大、区间越宽，"
+            "数值越要打折看；区间窄=数据稳、更可信。\n"
+            "- 这些概率经过历年数据**回测校准**——标约 70% 的，实际也接近 70% 被录，"
+            "作为整体可放心参考。\n"
+            "- ⚠️ 是**科学的概率参考，不是录取保证**，请搭配冲/稳/保梯度一起看。")
+
 tier_help = {"冲": "🚀 冲一冲：略高于你的位次", "稳": "🎯 稳一稳：与你位次相近",
              "保": "🛡️ 保一保：你有明显优势"}
 # 空档位的友好提示（按风险给不同口吻；保底为空最危险）
@@ -160,3 +200,9 @@ for col, tier in zip(columns, TIERS):
                 with st.expander("📚 这个专业是干嘛的？"):
                     render_major_detail(rec.major)
                 wishlist_button(rec.major, key=f"wish_rec_{tier}_{rec.major.id}")
+
+st.divider()
+st.markdown("##### 把心仪的 ❤️ 加进心愿单后，下一步：")
+n1, n2 = st.columns(2)
+n1.page_link("pages/6_📊_数据大屏.py", label="🩺 体检我选的志愿（看合不合理）", icon="📋")
+n2.page_link("pages/8_❤️_我的志愿表.py", label="❤️ 整理顺序 / 一键导出", icon="❤️")
