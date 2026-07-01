@@ -80,7 +80,7 @@ def render_home() -> None:
     _, is_real = active_source()
     if is_real:
         st.success(
-            f"✅ 当前为**真实数据**（{'、'.join(available_provinces())}）："
+            f"✅ **真实数据** · 已覆盖 {len(available_provinces())} 省 · "
             f"{len(load_schools())} 所院校 · {len(load_majors())} 个专业 · "
             f"{admission_count():,} 条录取记录")
     else:
@@ -88,28 +88,54 @@ def render_home() -> None:
                 "（见 ⚙️ 数据源）。")
 
     student = get_student()
-
-    # 醒目主按钮：新手只需认准这一个
     st.divider()
-    if not student:
-        st.markdown("#### 第一次来？认准下面这个按钮就行 👇")
-        b1, b2 = st.columns([2, 1])
-        with b1:
-            if st.button("🚀 开始：填我的高考信息（约 1 分钟）",
-                         type="primary", use_container_width=True):
-                st.switch_page(info_page)
-        with b2:
-            if st.button("🎲 先用示例考生体验", use_container_width=True):
-                from gaokao.data_loader import available_provinces, available_subjects  # noqa: PLC0415
-                from gaokao.models import Student  # noqa: PLC0415
-                from gaokao.ui_helpers import set_student  # noqa: PLC0415
 
-                prov = available_provinces()[0]
-                subs = available_subjects(prov) or ["物理"]
-                sub = subs[0]
+    if not student:
+        # 首页即填：手机上一进来就填这三项，直接出推荐（无需先跳页）
+        from gaokao import rank_score  # noqa: PLC0415
+        from gaokao.data_loader import available_subjects  # noqa: PLC0415
+        from gaokao.models import Student  # noqa: PLC0415
+        from gaokao.ui_helpers import set_student  # noqa: PLC0415
+
+        st.markdown("#### 🚀 一分钟开始：填好这三项，直接看推荐")
+        provinces = available_provinces()
+        qp = st.selectbox("你的省份", provinces, key="home_prov",
+                          help="高考按省份分别划线录取，分数线/位次都基于此省。")
+        subs = available_subjects(qp) or ["物理", "历史"]
+        # 不设 key，切换省份时科类自动回到首项，避免出现该省没有的旧科类
+        qs = st.radio("选科科类", subs, horizontal=True)
+        qscore = st.number_input("高考分数", min_value=200, max_value=900,
+                                 value=550, key="home_score")
+
+        table = rank_score.build_table(qp, qs)
+        est_rank = None
+        if table is not None:
+            conv = table.rank_for_score(int(qscore))
+            est_rank = conv.value
+            st.caption(f"约第 **{est_rank:,}** 名（{qp}一分一段换算，位次是推荐核心依据）")
+        else:
+            st.caption("该省暂无一分一段换算表，可到『信息录入』手动填位次。")
+
+        if st.button("🎯 开始：看我的冲稳保推荐", type="primary",
+                     use_container_width=True):
+            set_student(Student(
+                score=float(qscore), rank=int(est_rank or 50000),
+                province=qp, subject_type=qs, electives=[]))
+            st.switch_page(recommend_page)
+
+        if qs == "综合":
+            st.caption("💡 3+3 省份建议到 **信息录入** 补选 3 门选考科目，"
+                       "以过滤你不能报的专业。")
+        st.caption("想填城市/专业偏好、做兴趣测评让推荐更懂你？")
+        h1, h2 = st.columns(2)
+        with h1:
+            st.page_link(info_page, label="填更多偏好（可选）", icon="📝")
+        with h2:
+            if st.button("🎲 先用示例考生体验", use_container_width=True):
+                sub0 = subs[0]
                 set_student(Student(
-                    score=573, rank=50000, province=prov, subject_type=sub,
-                    electives=["物理", "化学", "生物"] if sub == "综合" else []))
+                    score=573, rank=50000, province=qp, subject_type=sub0,
+                    electives=["物理", "化学", "生物"] if sub0 == "综合" else []))
                 st.switch_page(recommend_page)
     elif not st.session_state.get("recommendations"):
         if st.button(f"🎯 下一步：看 {student.province}·{student.subject_type}·{student.score}分 的冲稳保推荐",
