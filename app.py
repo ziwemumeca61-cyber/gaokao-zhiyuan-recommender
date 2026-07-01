@@ -20,6 +20,48 @@ st.set_page_config(page_title=branding.get("app_title"),
                    page_icon=branding.get("app_icon"), layout="wide")
 
 
+def _inject_responsive_css() -> None:
+    """注入手机端友好样式：窄屏下多列自动堆叠、留白收紧、字号与点按区域加大。
+
+    通过 st.navigation 时本入口每次都会执行，故在此注入即可覆盖所有页面。
+    """
+    st.markdown(
+        """
+        <style>
+        /* 收紧顶部/两侧留白，手机上更省空间 */
+        .block-container { padding-top: 2.2rem; padding-bottom: 3rem; }
+        @media (max-width: 640px) {
+            .block-container { padding-left: .8rem !important;
+                               padding-right: .8rem !important; padding-top: 1.2rem; }
+            /* 关键：窄屏下让 st.columns 自动竖排，冲/稳/保等三列不再被挤成窄条 */
+            div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: .4rem; }
+            div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"],
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                flex: 1 1 100% !important; width: 100% !important; min-width: 100% !important;
+            }
+            /* 正文与标题在手机上更易读 */
+            html, body, [class*="css"] { font-size: 16px; }
+            h1 { font-size: 1.6rem !important; }
+            h2 { font-size: 1.35rem !important; }
+            h3 { font-size: 1.15rem !important; }
+            /* 按钮/下载键点按区域加大、整行更好点 */
+            .stButton > button, .stDownloadButton > button {
+                min-height: 2.9rem; width: 100%; font-size: 1rem;
+            }
+            /* 表单控件放大，手指更好操作 */
+            div[data-baseweb="select"], .stNumberInput input, .stTextInput input {
+                min-height: 2.7rem; font-size: 1rem;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+_inject_responsive_css()
+
+
 def render_home() -> None:
     """引导式首页：数据徽章 + 三步走 + 动态下一步。"""
     from gaokao.data_loader import (  # noqa: PLC0415
