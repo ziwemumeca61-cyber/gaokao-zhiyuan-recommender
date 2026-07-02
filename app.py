@@ -63,65 +63,99 @@ _inject_responsive_css()
 
 
 def render_home() -> None:
-    """引导式首页：数据徽章 + 三步走 + 动态下一步。"""
+    """聚焦式首页：一个醒目的入口卡片为主角，数据/工具等次要信息收纳。"""
     from gaokao.data_loader import (  # noqa: PLC0415
-        active_source, admission_count, available_provinces, load_majors, load_schools,
+        active_source, available_provinces, load_majors, load_schools,
     )
     from gaokao.ui_helpers import ensure_data, get_student  # noqa: PLC0415
 
     st.title(f"{branding.get('app_icon')} {branding.get('app_title')}")
-    st.subheader(branding.get("subtitle"))
-    if branding.get("org_name"):
-        st.caption(f"由 {branding.get('org_name')} 提供")
+    st.caption(branding.get("subtitle"))
 
     if not ensure_data():
         st.stop()
 
+    # 数据可信度压成一行小字，不与主入口抢眼球
     _, is_real = active_source()
     if is_real:
-        st.success(
-            f"✅ **真实数据** · 已覆盖 {len(available_provinces())} 省 · "
-            f"{len(load_schools())} 所院校 · {len(load_majors())} 个专业 · "
-            f"{admission_count():,} 条录取记录")
+        line = (f"✅ 真实数据 · 覆盖 {len(available_provinces())} 省 · "
+                f"{len(load_schools())} 校 · {len(load_majors())} 专业")
+        if branding.get("org_name"):
+            line += f" · 由 {branding.get('org_name')} 提供"
+        st.caption(line)
     else:
-        st.info("🧪 当前为**演示数据**（模拟），仅供体验；导入真实数据后自动切换"
-                "（见 ⚙️ 数据源）。")
+        st.caption("🧪 演示数据（模拟）；导入真实数据后自动切换（见 ⚙️ 数据源）。")
 
     student = get_student()
-    st.divider()
 
     if not student:
-        # 首页即填：手机上一进来就填这三项，直接出推荐（无需先跳页）
-        from gaokao import rank_score  # noqa: PLC0415
-        from gaokao.data_loader import available_subjects  # noqa: PLC0415
-        from gaokao.models import Student  # noqa: PLC0415
-        from gaokao.ui_helpers import set_student  # noqa: PLC0415
+        _render_entry_card()
+    elif not st.session_state.get("recommendations"):
+        with st.container(border=True):
+            st.markdown("### 👋 欢迎回来")
+            st.write(f"已保存：**{student.province} · {student.subject_type} · "
+                     f"{int(student.score)}分**（约第 {student.rank:,} 名）")
+            if st.button("🎯 看我的冲稳保推荐", type="primary",
+                         use_container_width=True):
+                st.switch_page(recommend_page)
+            st.page_link(info_page, label="修改我的信息", icon="📝")
+    else:
+        with st.container(border=True):
+            st.markdown("### ✅ 推荐已生成")
+            if st.button("❤️ 整理 / 导出我的志愿表", type="primary",
+                         use_container_width=True):
+                st.switch_page(wishlist_page)
+            st.page_link(recommend_page, label="回看冲稳保推荐", icon="🎯")
 
-        st.markdown("#### 🚀 一分钟开始：填好这三项，直接看推荐")
-        provinces = available_provinces()
-        qp = st.selectbox("你的省份", provinces, key="home_prov",
-                          help="高考按省份分别划线录取，分数线/位次都基于此省。")
+    # 次要：更多工具收进折叠框，保持首页清爽
+    with st.expander("🧰 更多工具：兴趣测评 · 一分一段 · 专业百科 · 院校查询 · 志愿体检"):
+        tc = st.columns(2)
+        with tc[0]:
+            st.page_link(assess_page, label="兴趣测评", icon="🧭")
+            st.page_link(encyclo_page, label="专业百科", icon="📚")
+            st.page_link(dashboard_page, label="志愿体检", icon="📋")
+        with tc[1]:
+            st.page_link(rankscore_page, label="分数↔位次", icon="🔢")
+            st.page_link(school_page, label="院校查询", icon="🏛️")
+
+    st.caption("⚠️ " + branding.get("disclaimer"))
+
+
+def _render_entry_card() -> None:
+    """首页主角：醒目的一步式入口卡片——填三项直接出冲稳保。"""
+    from gaokao import rank_score  # noqa: PLC0415
+    from gaokao.data_loader import (  # noqa: PLC0415
+        available_categories, available_cities, available_provinces, available_subjects,
+    )
+    from gaokao.models import Student  # noqa: PLC0415
+    from gaokao.ui_helpers import set_student  # noqa: PLC0415
+
+    with st.container(border=True):
+        st.markdown("### 🚀 一分钟，出我的志愿表")
+        st.caption("填下面三项，立刻看到你的冲 / 稳 / 保推荐")
+
+        qp = st.selectbox("① 你的省份", available_provinces(), key="home_prov",
+                          help="高考按省份分别划线录取，位次都基于此省。")
         subs = available_subjects(qp) or ["物理", "历史"]
-        # 不设 key，切换省份时科类自动回到首项，避免出现该省没有的旧科类
-        qs = st.radio("选科科类", subs, horizontal=True)
-        qscore = st.number_input("高考分数", min_value=200, max_value=900,
-                                 value=550, key="home_score")
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            # 不设 key：切换省份时科类回到首项，避免出现该省没有的旧科类
+            qs = st.radio("② 选科科类", subs, horizontal=True)
+        with cc2:
+            qscore = st.number_input("③ 高考分数", min_value=200, max_value=900,
+                                     value=550, key="home_score")
 
         table = rank_score.build_table(qp, qs)
         est_rank = None
         if table is not None:
-            conv = table.rank_for_score(int(qscore))
-            est_rank = conv.value
-            st.caption(f"约第 **{est_rank:,}** 名（{qp}一分一段换算，位次是推荐核心依据）")
+            est_rank = table.rank_for_score(int(qscore)).value
+            st.info(f"📊 你在 **{qp}** 约排 **第 {est_rank:,} 名**"
+                    "　（位次是志愿推荐的核心依据）")
         else:
             st.caption("该省暂无一分一段换算表，可到『信息录入』手动填位次。")
 
-        # 更多偏好收进折叠框：首屏清爽，点开即可填，无需跳页
-        from gaokao.data_loader import (  # noqa: PLC0415
-            available_categories, available_cities,
-        )
         electives: list[str] = []
-        with st.expander("🎛️ 更多偏好（可选，填了推荐更懂你）"):
+        with st.expander("🎛️ 更多偏好（可选：城市 / 专业 / 家庭 / 读研…）"):
             if qs == "综合":
                 from gaokao.electives import ELECTIVE_SUBJECTS  # noqa: PLC0415
                 electives = st.multiselect(
@@ -139,7 +173,7 @@ def render_home() -> None:
             _intent = ["还没想好", "考公考编", "进企业"]
             career_intent = st.selectbox("毕业去向倾向", _intent, key="home_career")
 
-        if st.button("🎯 开始：看我的冲稳保推荐", type="primary",
+        if st.button("🎯 开始，看我的冲稳保推荐", type="primary",
                      use_container_width=True):
             set_student(Student(
                 score=float(qscore), rank=int(est_rank or 50000),
@@ -151,58 +185,20 @@ def render_home() -> None:
                 career_intent="" if career_intent == "还没想好" else career_intent))
             st.switch_page(recommend_page)
 
-        st.caption("偏好都是可选的，只填分数也能出推荐；想做兴趣测评可到下方工具区。")
-        h1, h2 = st.columns(2)
-        with h1:
-            st.page_link(info_page, label="用完整表单填 / 修改", icon="📝")
-        with h2:
-            if st.button("🎲 先用示例考生体验", use_container_width=True):
-                sub0 = subs[0]
-                set_student(Student(
-                    score=573, rank=50000, province=qp, subject_type=sub0,
-                    electives=["物理", "化学", "生物"] if sub0 == "综合" else []))
-                st.switch_page(recommend_page)
-    elif not st.session_state.get("recommendations"):
-        if st.button(f"🎯 下一步：看 {student.province}·{student.subject_type}·{student.score}分 的冲稳保推荐",
-                     type="primary", use_container_width=True):
+    # 卡片外的次要入口：小字，不抢主按钮风头
+    s1, s2 = st.columns(2)
+    with s1:
+        st.page_link(info_page, label="用完整表单填", icon="📝")
+    with s2:
+        if st.button("🎲 先用示例考生体验", use_container_width=True):
+            sub0 = (available_subjects(st.session_state.get("home_prov")
+                                       or available_provinces()[0]) or ["物理"])[0]
+            set_student(Student(
+                score=573, rank=50000,
+                province=st.session_state.get("home_prov") or available_provinces()[0],
+                subject_type=sub0,
+                electives=["物理", "化学", "生物"] if sub0 == "综合" else []))
             st.switch_page(recommend_page)
-    else:
-        if st.button("❤️ 下一步：整理 / 导出我的志愿表",
-                     type="primary", use_container_width=True):
-            st.switch_page(wishlist_page)
-
-    st.divider()
-    st.markdown("### 跟着三步走，志愿表轻松搞定")
-    c1, c2, c3 = st.columns(3)
-    with c1, st.container(border=True):
-        st.markdown("#### 1️⃣ 填写信息")
-        st.caption("分数 · 位次 · 省份 · 偏好")
-        st.markdown("✅ 已完成" if student else "⬜ 待完成")
-        st.page_link(info_page, label="去填写 / 修改", icon="📝")
-    with c2, st.container(border=True):
-        st.markdown("#### 2️⃣ 看冲稳保推荐")
-        st.caption("基于真实录取线的志愿表")
-        st.markdown("✅ 可查看" if student else "⬜ 需先完成第 1 步")
-        st.page_link(recommend_page, label="查看推荐", icon="🎯")
-    with c3, st.container(border=True):
-        st.markdown("#### 3️⃣ 选校 · 对比 · 导出")
-        st.caption("心愿单排序 · 院校对比 · 一键导出")
-        st.markdown("✅ 可整理" if st.session_state.get("wishlist") else "⬜ 先把心仪专业加入心愿单")
-        st.page_link(wishlist_page, label="我的志愿表", icon="❤️")
-
-    st.divider()
-    st.markdown("##### 🧰 辅助工具")
-    t = st.columns(4)
-    with t[0]:
-        st.page_link(assess_page, label="兴趣测评", icon="🧭")
-    with t[1]:
-        st.page_link(rankscore_page, label="分数↔位次", icon="🔢")
-    with t[2]:
-        st.page_link(encyclo_page, label="专业百科", icon="📚")
-    with t[3]:
-        st.page_link(dashboard_page, label="志愿体检", icon="📋")
-
-    st.caption("⚠️ " + branding.get("disclaimer"))
 
 
 # ---- 页面注册（供导航与首页按钮引用） ----
