@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .. import electives
 from ..data_loader import load_majors, load_schools
-from ..models import TIERS, Recommendation, Student
+from ..models import TIER_RUSH, TIER_SAFE, TIER_STABLE, TIERS, Recommendation, Student
 from . import interest, ml_model, rank_based, scoring
 from .history import aggregate_cached
 
@@ -41,6 +41,28 @@ def recommend(
             continue
         picked.append((tier, school, major, stat))
 
+    # 顶分兜底：位次极好的考生（如全省前几十名）比所有院校参考位次都靠前，
+    # r < SAFE_MIN 会把全部候选当"浪费分数"剔除，导致三档全空。此时没有更高的
+    # 学校可选——按院校档次（参考位次升序）把最顶尖的补为 稳/保，"冲"留空。
+    top_mode = False
+    if not any(t in (TIER_RUSH, TIER_STABLE) for t, *_ in picked):
+        top_cands = []
+        for (school_id, major_id), stat in stats.items():
+            school = schools.get(school_id)
+            major = majors.get(major_id)
+            if school is None or major is None:
+                continue
+            if not electives.satisfies(major.subject_req, student.electives):
+                continue
+            if rank_based.ratio(student.rank, stat.ref_rank) < rank_based.SAFE_MIN:
+                top_cands.append((school, major, stat))
+        if top_cands:
+            top_mode = True
+            top_cands.sort(key=lambda t: t[2].ref_rank)
+            for i, (school, major, stat) in enumerate(top_cands[: per_tier * 4]):
+                tier = TIER_STABLE if i < per_tier * 2 else TIER_SAFE
+                picked.append((tier, school, major, stat))
+
     # 批量计算录取概率区间（基于历年位次波动的正态校准 + 招生计划变化修正）
     intervals = ml_model.predict_intervals(
         student.rank,
@@ -55,7 +77,7 @@ def recommend(
             student, school, major, probability, interest_match, weights)
         reasons = _build_reasons(student, school, major, stat, tier,
                                  probability, prob_low, prob_high, confidence,
-                                 interest_match)
+                                 interest_match, top_mode=top_mode)
         buckets[tier].append(Recommendation(
             school=school, major=major, tier=tier, probability=probability,
             interest_match=interest_match, composite_score=composite,
@@ -93,10 +115,17 @@ def _diversify(ranked: list[Recommendation], per_tier: int,
 
 
 def _build_reasons(student, school, major, stat, tier, probability,
-                   prob_low, prob_high, confidence, interest_match):
+                   prob_low, prob_high, confidence, interest_match,
+                   top_mode: bool = False):
     reasons: list[str] = []
     r = rank_based.ratio(student.rank, stat.ref_rank)
-    if tier == "冲":
+    if top_mode:
+        # 顶分考生：位次优于所有院校参考位次，按院校档次排入稳/保
+        reasons.append(
+            f"你的位次（第 {student.rank} 名）显著优于该校近年参考位次（约 {stat.ref_rank}），"
+            + ("这已是可选的最高档次院校，作为主选很稳" if tier == "稳"
+               else "作为保底十拿九稳"))
+    elif tier == "冲":
         reasons.append(f"院校近年位次约 {stat.ref_rank}，略高于你（位次比 {r:.2f}），可冲一冲")
     elif tier == "稳":
         reasons.append(f"院校近年位次约 {stat.ref_rank}，与你位次相近（{r:.2f}），较稳妥")
