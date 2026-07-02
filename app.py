@@ -116,20 +116,45 @@ def render_home() -> None:
         else:
             st.caption("该省暂无一分一段换算表，可到『信息录入』手动填位次。")
 
+        # 更多偏好收进折叠框：首屏清爽，点开即可填，无需跳页
+        from gaokao.data_loader import (  # noqa: PLC0415
+            available_categories, available_cities,
+        )
+        electives: list[str] = []
+        with st.expander("🎛️ 更多偏好（可选，填了推荐更懂你）"):
+            if qs == "综合":
+                from gaokao.electives import ELECTIVE_SUBJECTS  # noqa: PLC0415
+                electives = st.multiselect(
+                    "选考科目（3+3 选 3 门，用于过滤你不能报的专业）",
+                    list(ELECTIVE_SUBJECTS), max_selections=3, key="home_elect")
+            level_pref = st.selectbox(
+                "院校层次偏好", ["不限", "985", "211", "双一流", "普通"], key="home_level")
+            city_prefs = st.multiselect("意向城市", available_cities(), key="home_city")
+            major_prefs = st.multiselect(
+                "意向专业门类", available_categories(), key="home_major")
+            _econ = ["不便透露", "一般", "宽裕"]
+            family_economy = st.selectbox("家庭经济", _econ, key="home_econ")
+            accept_postgrad = st.radio(
+                "是否接受读研深造", ["接受", "暂不打算"], horizontal=True, key="home_pg")
+            _intent = ["还没想好", "考公考编", "进企业"]
+            career_intent = st.selectbox("毕业去向倾向", _intent, key="home_career")
+
         if st.button("🎯 开始：看我的冲稳保推荐", type="primary",
                      use_container_width=True):
             set_student(Student(
                 score=float(qscore), rank=int(est_rank or 50000),
-                province=qp, subject_type=qs, electives=[]))
+                province=qp, subject_type=qs, electives=list(electives),
+                city_prefs=city_prefs, major_prefs=major_prefs,
+                level_pref=None if level_pref == "不限" else level_pref,
+                family_economy="" if family_economy == "不便透露" else family_economy,
+                accept_postgrad=(accept_postgrad == "接受"),
+                career_intent="" if career_intent == "还没想好" else career_intent))
             st.switch_page(recommend_page)
 
-        if qs == "综合":
-            st.caption("💡 3+3 省份建议到 **信息录入** 补选 3 门选考科目，"
-                       "以过滤你不能报的专业。")
-        st.caption("想填城市/专业偏好、做兴趣测评让推荐更懂你？")
+        st.caption("偏好都是可选的，只填分数也能出推荐；想做兴趣测评可到下方工具区。")
         h1, h2 = st.columns(2)
         with h1:
-            st.page_link(info_page, label="填更多偏好（可选）", icon="📝")
+            st.page_link(info_page, label="用完整表单填 / 修改", icon="📝")
         with h2:
             if st.button("🎲 先用示例考生体验", use_container_width=True):
                 sub0 = subs[0]
