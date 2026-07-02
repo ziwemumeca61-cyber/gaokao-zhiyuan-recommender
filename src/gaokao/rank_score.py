@@ -43,9 +43,14 @@ class SourceMeta:
 class ScoreRankTable:
     """某省某科类的分数↔位次对照表。scores 升序、log_ranks 随之非增。
 
-    范围内做分段线性插值（忠实于一分一段）；范围外用对数位次的全局线性回归外推
-    （log10(rank) = a + b·score），并把结果标记为 clamped=True 表示"超出实测、估算"。
+    范围内做分段线性插值（忠实于一分一段）；范围外沿**边界局部斜率**外推
+    （取最靠近边界的若干实测点拟合 log10(rank) 对分数的斜率），并把结果标记为
+    clamped=True 表示"超出实测、估算"。不用全局回归外推——一分一段曲线高分段
+    陡、中低分段缓，全局拟合被中低分段主导，会把高分外推值拉坏几个数量级
+    （曾致山东 710 分算出 6937 名，而 697 分实测仅 56 名）。
     """
+
+    _EDGE_K = 12  # 外推所用的边界实测点数
 
     def __init__(self, scores: list[int], ranks: list[int],
                  source: SourceMeta | None = None) -> None:
@@ -54,6 +59,15 @@ class ScoreRankTable:
         self.source = source or SourceMeta(is_real=False, label="模拟数据推导")
         self._log_ranks = [math.log10(r) for r in ranks]
         self._a, self._b = _linfit(scores, self._log_ranks)
+        # 高/低分端局部斜率（log10 位次 / 分）；异常（非负）时退回全局斜率或微小负值
+        k = min(self._EDGE_K, len(scores))
+        fallback = self._b if self._b < 0 else -0.01
+        self._b_hi = _linfit(scores[-k:], self._log_ranks[-k:])[1]
+        self._b_lo = _linfit(scores[:k], self._log_ranks[:k])[1]
+        if self._b_hi >= 0:
+            self._b_hi = fallback
+        if self._b_lo >= 0:
+            self._b_lo = fallback
 
     @property
     def score_min(self) -> int:
@@ -76,16 +90,25 @@ class ScoreRankTable:
         return list(zip(self.scores, self.ranks))
 
     def rank_for_score(self, score: float) -> Conversion:
-        if score < self.score_min or score > self.score_max:
-            log_r = self._a + self._b * score
-            return Conversion(value=int(round(10 ** log_r)), clamped=True)
+        if score > self.score_max:
+            # 沿高分端局部斜率外推，且不得差于表内最好位次（保证单调）
+            log_r = self._log_ranks[-1] + self._b_hi * (score - self.score_max)
+            value = max(1, min(int(round(10 ** log_r)), self.rank_best))
+            return Conversion(value=value, clamped=True)
+        if score < self.score_min:
+            log_r = self._log_ranks[0] + self._b_lo * (score - self.score_min)
+            value = max(int(round(10 ** log_r)), self.rank_worst)
+            return Conversion(value=value, clamped=True)
         log_r = _interp(self.scores, self._log_ranks, score)
         return Conversion(value=int(round(10 ** log_r)), clamped=False)
 
     def score_for_rank(self, rank: int) -> Conversion:
         log_r = math.log10(max(rank, 1))
-        if rank < self.rank_best or rank > self.rank_worst:
-            score = (log_r - self._a) / self._b if self._b else self.scores[-1]
+        if rank < self.rank_best:
+            score = self.score_max + (log_r - self._log_ranks[-1]) / self._b_hi
+            return Conversion(value=int(round(score)), clamped=True)
+        if rank > self.rank_worst:
+            score = self.score_min + (log_r - self._log_ranks[0]) / self._b_lo
             return Conversion(value=int(round(score)), clamped=True)
         # 位次随分数非增；以 log 位次升序（即分数降序）建视图做插值
         log_desc = self._log_ranks[::-1]
