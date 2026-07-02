@@ -50,6 +50,19 @@ def test_extrapolation_monotonic_beyond_range():
     assert r2 < r1
 
 
+def test_extrapolation_never_worse_than_best_rank():
+    """回归：高于表内最高分的外推位次必须不差于表内最好位次。
+
+    曾因用全局回归外推，山东 710 分算出 6937 名（697 分实测仅 56 名）。
+    """
+    for province, subject in rank_score.segment_pairs():
+        t = rank_score.build_table(province, subject)
+        for extra in (1, 5, 15, 30):
+            v = t.rank_for_score(t.score_max + extra).value
+            assert 1 <= v <= t.rank_best, \
+                f"{province}{subject} {t.score_max + extra}分 -> {v} 差于表内最好位次 {t.rank_best}"
+
+
 def test_score_for_rank_out_of_range_clamped():
     t = _table()
     assert t.score_for_rank(t.rank_best // 2).clamped is True
