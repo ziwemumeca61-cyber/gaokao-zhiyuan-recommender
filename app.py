@@ -20,6 +20,48 @@ st.set_page_config(page_title=branding.get("app_title"),
                    page_icon=branding.get("app_icon"), layout="wide")
 
 
+def _inject_responsive_css() -> None:
+    """注入手机端友好样式：窄屏下多列自动堆叠、留白收紧、字号与点按区域加大。
+
+    通过 st.navigation 时本入口每次都会执行，故在此注入即可覆盖所有页面。
+    """
+    st.markdown(
+        """
+        <style>
+        /* 收紧顶部/两侧留白，手机上更省空间 */
+        .block-container { padding-top: 2.2rem; padding-bottom: 3rem; }
+        @media (max-width: 640px) {
+            .block-container { padding-left: .8rem !important;
+                               padding-right: .8rem !important; padding-top: 1.2rem; }
+            /* 关键：窄屏下让 st.columns 自动竖排，冲/稳/保等三列不再被挤成窄条 */
+            div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: .4rem; }
+            div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"],
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                flex: 1 1 100% !important; width: 100% !important; min-width: 100% !important;
+            }
+            /* 正文与标题在手机上更易读 */
+            html, body, [class*="css"] { font-size: 16px; }
+            h1 { font-size: 1.6rem !important; }
+            h2 { font-size: 1.35rem !important; }
+            h3 { font-size: 1.15rem !important; }
+            /* 按钮/下载键点按区域加大、整行更好点 */
+            .stButton > button, .stDownloadButton > button {
+                min-height: 2.9rem; width: 100%; font-size: 1rem;
+            }
+            /* 表单控件放大，手指更好操作 */
+            div[data-baseweb="select"], .stNumberInput input, .stTextInput input {
+                min-height: 2.7rem; font-size: 1rem;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+_inject_responsive_css()
+
+
 def render_home() -> None:
     """引导式首页：数据徽章 + 三步走 + 动态下一步。"""
     from gaokao.data_loader import (  # noqa: PLC0415
@@ -38,7 +80,7 @@ def render_home() -> None:
     _, is_real = active_source()
     if is_real:
         st.success(
-            f"✅ 当前为**真实数据**（{'、'.join(available_provinces())}）："
+            f"✅ **真实数据** · 已覆盖 {len(available_provinces())} 省 · "
             f"{len(load_schools())} 所院校 · {len(load_majors())} 个专业 · "
             f"{admission_count():,} 条录取记录")
     else:
@@ -46,28 +88,79 @@ def render_home() -> None:
                 "（见 ⚙️ 数据源）。")
 
     student = get_student()
-
-    # 醒目主按钮：新手只需认准这一个
     st.divider()
-    if not student:
-        st.markdown("#### 第一次来？认准下面这个按钮就行 👇")
-        b1, b2 = st.columns([2, 1])
-        with b1:
-            if st.button("🚀 开始：填我的高考信息（约 1 分钟）",
-                         type="primary", use_container_width=True):
-                st.switch_page(info_page)
-        with b2:
-            if st.button("🎲 先用示例考生体验", use_container_width=True):
-                from gaokao.data_loader import available_provinces, available_subjects  # noqa: PLC0415
-                from gaokao.models import Student  # noqa: PLC0415
-                from gaokao.ui_helpers import set_student  # noqa: PLC0415
 
-                prov = available_provinces()[0]
-                subs = available_subjects(prov) or ["物理"]
-                sub = subs[0]
+    if not student:
+        # 首页即填：手机上一进来就填这三项，直接出推荐（无需先跳页）
+        from gaokao import rank_score  # noqa: PLC0415
+        from gaokao.data_loader import available_subjects  # noqa: PLC0415
+        from gaokao.models import Student  # noqa: PLC0415
+        from gaokao.ui_helpers import set_student  # noqa: PLC0415
+
+        st.markdown("#### 🚀 一分钟开始：填好这三项，直接看推荐")
+        provinces = available_provinces()
+        qp = st.selectbox("你的省份", provinces, key="home_prov",
+                          help="高考按省份分别划线录取，分数线/位次都基于此省。")
+        subs = available_subjects(qp) or ["物理", "历史"]
+        # 不设 key，切换省份时科类自动回到首项，避免出现该省没有的旧科类
+        qs = st.radio("选科科类", subs, horizontal=True)
+        qscore = st.number_input("高考分数", min_value=200, max_value=900,
+                                 value=550, key="home_score")
+
+        table = rank_score.build_table(qp, qs)
+        est_rank = None
+        if table is not None:
+            conv = table.rank_for_score(int(qscore))
+            est_rank = conv.value
+            st.caption(f"约第 **{est_rank:,}** 名（{qp}一分一段换算，位次是推荐核心依据）")
+        else:
+            st.caption("该省暂无一分一段换算表，可到『信息录入』手动填位次。")
+
+        # 更多偏好收进折叠框：首屏清爽，点开即可填，无需跳页
+        from gaokao.data_loader import (  # noqa: PLC0415
+            available_categories, available_cities,
+        )
+        electives: list[str] = []
+        with st.expander("🎛️ 更多偏好（可选，填了推荐更懂你）"):
+            if qs == "综合":
+                from gaokao.electives import ELECTIVE_SUBJECTS  # noqa: PLC0415
+                electives = st.multiselect(
+                    "选考科目（3+3 选 3 门，用于过滤你不能报的专业）",
+                    list(ELECTIVE_SUBJECTS), max_selections=3, key="home_elect")
+            level_pref = st.selectbox(
+                "院校层次偏好", ["不限", "985", "211", "双一流", "普通"], key="home_level")
+            city_prefs = st.multiselect("意向城市", available_cities(), key="home_city")
+            major_prefs = st.multiselect(
+                "意向专业门类", available_categories(), key="home_major")
+            _econ = ["不便透露", "一般", "宽裕"]
+            family_economy = st.selectbox("家庭经济", _econ, key="home_econ")
+            accept_postgrad = st.radio(
+                "是否接受读研深造", ["接受", "暂不打算"], horizontal=True, key="home_pg")
+            _intent = ["还没想好", "考公考编", "进企业"]
+            career_intent = st.selectbox("毕业去向倾向", _intent, key="home_career")
+
+        if st.button("🎯 开始：看我的冲稳保推荐", type="primary",
+                     use_container_width=True):
+            set_student(Student(
+                score=float(qscore), rank=int(est_rank or 50000),
+                province=qp, subject_type=qs, electives=list(electives),
+                city_prefs=city_prefs, major_prefs=major_prefs,
+                level_pref=None if level_pref == "不限" else level_pref,
+                family_economy="" if family_economy == "不便透露" else family_economy,
+                accept_postgrad=(accept_postgrad == "接受"),
+                career_intent="" if career_intent == "还没想好" else career_intent))
+            st.switch_page(recommend_page)
+
+        st.caption("偏好都是可选的，只填分数也能出推荐；想做兴趣测评可到下方工具区。")
+        h1, h2 = st.columns(2)
+        with h1:
+            st.page_link(info_page, label="用完整表单填 / 修改", icon="📝")
+        with h2:
+            if st.button("🎲 先用示例考生体验", use_container_width=True):
+                sub0 = subs[0]
                 set_student(Student(
-                    score=573, rank=50000, province=prov, subject_type=sub,
-                    electives=["物理", "化学", "生物"] if sub == "综合" else []))
+                    score=573, rank=50000, province=qp, subject_type=sub0,
+                    electives=["物理", "化学", "生物"] if sub0 == "综合" else []))
                 st.switch_page(recommend_page)
     elif not st.session_state.get("recommendations"):
         if st.button(f"🎯 下一步：看 {student.province}·{student.subject_type}·{student.score}分 的冲稳保推荐",
